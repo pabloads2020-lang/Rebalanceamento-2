@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Rebalanceador de Carteira - Universal</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #0b2b3b 0%, #1a4a5f 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        .card {
+            background: white;
+            border-radius: 24px;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.2);
+            padding: 25px 30px;
+            margin-bottom: 25px;
+        }
+        h1 {
+            margin: 0 0 8px 0;
+            color: #0b2b3b;
+            font-size: 28px;
+        }
+        .sub {
+            color: #5f6c7a;
+            margin-bottom: 20px;
+            border-left: 4px solid #2c7da0;
+            padding-left: 15px;
+        }
+        .upload-area {
+            background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
+            border: 2px dashed #2c7da0;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .upload-area h3 {
+            margin: 0 0 10px 0;
+            color: #0b2b3b;
+        }
+        .file-input-wrapper {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        input[type="file"] {
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            background: white;
+        }
+        .btn-excel {
+            background: #2c7da0;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .btn-excel:hover {
+            background: #1a5a75;
+        }
+        .modo-selector {
+            display: flex;
+            gap: 10px;
+            margin: 15px 0;
+            justify-content: center;
+        }
+        .modo-btn {
+            padding: 8px 20px;
+            border: 2px solid #2c7da0;
+            background: white;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .modo-btn.active {
+            background: #2c7da0;
+            color: white;
+        }
+        .mapeamento-manual {
+            display: none;
+            margin-top: 15px;
+            padding: 15px;
+            background: #fef9e3;
+            border-radius: 12px;
+        }
+        .mapeamento-manual.show {
+            display: block;
+        }
+        .classe-mapeamento {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .classe-mapeamento select {
+            padding: 5px 10px;
+            border-radius: 8px;
+        }
+        .perfil-buttons {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-bottom: 30px;
+        }
+        .perfil-btn {
+            flex: 1;
+            min-width: 120px;
+            padding: 14px 20px;
+            font-size: 18px;
+            font-weight: bold;
+            border: 2px solid #cbd5e1;
+            background: #f8fafc;
+            border-radius: 40px;
+            cursor: pointer;
+        }
+        .perfil-btn.active {
+            background: #0b2b3b;
+            border-color: #0b2b3b;
+            color: white;
+        }
+        .grid-2cols {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+        @media (max-width: 850px) {
+            .grid-2cols {
+                grid-template-columns: 1fr;
+            }
+        }
+        .classe-input {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: #f1f5f9;
+            padding: 10px 15px;
+            border-radius: 16px;
+            margin-bottom: 10px;
+        }
+        .classe-nome {
+            width: 170px;
+            font-weight: 500;
+        }
+        .classe-valor {
+            flex: 1;
+            display: flex;
+            gap: 8px;
+        }
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            text-align: right;
+        }
+        .total-aviso {
+            margin-top: 20px;
+            padding: 12px;
+            background: #fef9e3;
+            border-radius: 16px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .total-ok {
+            background: #e0f2fe;
+            color: #0369a1;
+        }
+        button.analisar {
+            width: 100%;
+            margin-top: 20px;
+            padding: 16px;
+            background: #0b2b3b;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 40px;
+            cursor: pointer;
+        }
+        .resultado-card {
+            background: #f8fafc;
+            border-radius: 20px;
+            padding: 15px;
+            margin-top: 20px;
+            border-left: 6px solid #0b2b3b;
+        }
+        .resultado-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 5px 14px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        .manter { background: #d1fae5; color: #065f46; }
+        .alocar { background: #fee2e2; color: #b91c1c; }
+        .retirar { background: #ffedd5; color: #9a3412; }
+        .legenda {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .footer {
+            text-align: center;
+            color: #cbd5e1;
+            font-size: 13px;
+            margin-top: 20px;
+        }
+        .detalhes-importacao {
+            background: #e0f2fe;
+            padding: 12px;
+            border-radius: 12px;
+            margin-top: 15px;
+            font-size: 13px;
+            display: none;
+        }
+        .detalhes-importacao.show {
+            display: block;
+        }
+    </style>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <h1>📊 Rebalanceador de Carteira</h1>
+        <div class="sub">Importe qualquer Excel de posição consolidada (XP, BTG, Rico, ou planilha própria)</div>
+        
+        <div class="upload-area">
+            <h3>📎 Upload da planilha do cliente</h3>
+            <div class="file-input-wrapper">
+                <input type="file" id="fileExcel" accept=".xlsx, .xls, .csv" />
+                <button class="btn-excel" id="btnProcessarExcel">📂 Importar e analisar</button>
+            </div>
+            
+            <div class="modo-selector">
+                <button class="modo-btn active" data-modo="auto">🤖 Modo Automático</button>
+                <button class="modo-btn" data-modo="manual">✋ Modo Manual (mapear colunas)</button>
+            </div>
+            
+            <div id="mapeamentoManual" class="mapeamento-manual">
+                <strong>🔧 Mapeie as colunas do seu Excel:</strong>
+                <div class="classe-mapeamento">
+                    <span>Coluna com nome do ativo/fundo:</span>
+                    <select id="colunaNome"></select>
+                </div>
+                <div class="classe-mapeamento">
+                    <span>Coluna com valor (R$):</span>
+                    <select id="colunaValor"></select>
+                </div>
+                <div class="classe-mapeamento">
+                    <span>Coluna com classe (opcional):</span>
+                    <select id="colunaClasse">
+                        <option value="">-- Automático por palavra-chave --</option>
+                    </select>
+                </div>
+                <button class="btn-excel" id="btnMapear" style="margin-top:10px;">✅ Aplicar mapeamento</button>
+            </div>
+            
+            <div id="detalhesImportacao" class="detalhes-importacao"></div>
+        </div>
+        
+        <div class="perfil-buttons">
+            <button class="perfil-btn" data-perfil="Conservador">🛡️ Conservador</button>
+            <button class="perfil-btn active" data-perfil="Moderado">⚖️ Moderado</button>
+            <button class="perfil-btn" data-perfil="Agressivo">🚀 Agressivo</button>
+        </div>
+        
+        <div class="grid-2cols">
+            <div>
+                <h3>📌 Alocação ATUAL (%)</h3>
+                <div id="inputs-alocacao"></div>
+                <div id="total-atual-msg" class="total-aviso">🔴 Total: 0% (deve ser 100%)</div>
+            </div>
+            
+            <div>
+                <h3>📈 Carteira Recomendada</h3>
+                <div id="recomendada-tabela" style="background:#f1f5f9; border-radius:16px; padding:12px;"></div>
+                <button class="analisar" id="btnAnalisar">🔍 ANALISAR REBALANCEAMENTO</button>
+                <div id="resultado-area" style="margin-top:20px;">
+                    <div class="resultado-card">
+                        <strong>📋 Recomendações:</strong>
+                        <div id="lista-recomendacoes" style="margin-top:12px;">
+                            <span style="color:#777;">Clique em "Analisar" após preencher os percentuais.</span>
+                        </div>
+                        <div class="legenda">
+                            <span><span class="badge manter">✅ Manter</span></span>
+                            <span><span class="badge alocar">🔼 Alocar +</span></span>
+                            <span><span class="badge retirar">🔽 Retirar</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="footer">📌 Indicado para equipe de investimentos | Compatível com qualquer extrato bancário/corretora</div>
+</div>
+
+<script>
+    // ========================
+    // PERFIS (já existentes)
+    // ========================
+    const carteiraRecomendada = {
+        Conservador: { "Renda Fixa Pós": 85, "Renda Fixa Pré": 15, "Renda Fixa Inflação": 0, "Multiestratégia": 0, "Renda Variável": 0, "Renda Fixa Global": 0, "Renda Variável Global": 0, "Alternativo": 0 },
+        Moderado: { "Renda Fixa Pós": 54, "Renda Fixa Pré": 13, "Renda Fixa Inflação": 20, "Multiestratégia": 5, "Renda Variável": 4, "Renda Fixa Global": 0, "Renda Variável Global": 4, "Alternativo": 0 },
+        Agressivo: { "Renda Fixa Pós": 44, "Renda Fixa Pré": 15, "Renda Fixa Inflação": 24, "Multiestratégia": 5, "Renda Variável": 6, "Renda Fixa Global": 0, "Renda Variável Global": 6, "Alternativo": 0 }
+    };
+    
+    const classes = ["Renda Fixa Pós", "Renda Fixa Pré", "Renda Fixa Inflação", "Multiestratégia", "Renda Variável", "Renda Fixa Global", "Renda Variável Global", "Alternativo"];
+    
+    // Palavras-chave para classificação automática
+    const keywordsMapping = {
+        "Renda Variável": ["ação", "acoes", "stock", "equity", "varejo", "bancos", "petr", "vale", "itub", "bbas", "b3sa"],
+        "Renda Variável Global": ["global", "internacional", "s&p", "nasdaq", "dolar", "sp500", "ivvb", "bdr", "trend bolsa", "wld"],
+        "Renda Fixa Pós": ["pós", "pos", "selic", "cdi", "tesouro selic", "lft", "pós-fixado"],
+        "Renda Fixa Pré": ["pré", "pre", "prefixado", "tesouro prefixado", "ltn"],
+        "Renda Fixa Inflação": ["inflação", "ipca", "ntn-b", "tesouro ipca", "ntnb"],
+        "Multiestratégia": ["multi", "multimercado", "macro", "hedge", "spread"],
+        "Renda Fixa Global": ["global fixed", "renda fixa global", "bonds", "treasury"],
+        "Alternativo": ["alternativo", "private", "venture", "crypto", "cripto", "imobiliario", "fii"]
+    };
+    
+    let perfilAtual = "Moderado";
+    let inputsAtuais = {};
+    let dadosExcel = [];
+    let colunasExcel = [];
+    let modoAtual = "auto";
+    
+    // Renderiza inputs
+    function renderInputsAlocacao() {
+        const container = document.getElementById("inputs-alocacao");
+        container.innerHTML = "";
+        classes.forEach(classe => {
+            const div = document.createElement("div");
+            div.className = "classe-input";
+            div.innerHTML = `
+                <div class="classe-nome">${classe}</div>
+                <div class="classe-valor">
+                    <input type="number" step="any" class="input-percent" data-classe="${classe}" value="0">
+                    <span>%</span>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+        classes.forEach(classe => {
+            const input = document.querySelector(`.input-percent[data-classe="${classe}"]`);
+            if (input) {
+                inputsAtuais[classe] = input;
+                input.addEventListener("input", () => atualizarTotal());
+            }
+        });
+        atualizarTotal();
+    }
+    
+    function atualizarTotal() {
+        let total = 0;
+        classes.forEach(c => { let v = parseFloat(inputsAtuais[c]?.value) || 0; total += v; });
+        const div = document.getElementById("total-atual-msg");
+        if (Math.abs(total - 100) < 0.01) {
+            div.innerHTML = `✅ Total: ${total.toFixed(2)}% (OK)`;
+            div.className = "total-aviso total-ok";
+        } else {
+            div.innerHTML = `⚠️ Total: ${total.toFixed(2)}% → Deve ser 100% (dif: ${(total-100).toFixed(2)}%)`;
+            div.className = "total-aviso";
+        }
+    }
+    
+    // Classifica um ativo baseado no nome (palavras-chave)
+    function classificarAtivo(nome) {
+        const nomeLower = nome.toLowerCase();
+        for (let [classe, keywords] of Object.entries(keywordsMapping)) {
+            for (let kw of keywords) {
+                if (nomeLower.includes(kw)) return classe;
+            }
+        }
+        // Default: se não encontrar, joga em Renda Variável (conservador)
+        return "Renda Variável";
+    }
+    
+    // Processa Excel de forma GENÉRICA
+    function processarExcelUniversal(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+            
+            if (!json || json.length < 2) {
+                alert("Arquivo vazio ou inválido.");
+                return;
+            }
+            
+            // Primeira linha = cabeçalho
+            const headers = json[0].map(h => String(h || "").trim());
+            colunasExcel = headers;
+            
+            // Extrai dados das linhas seguintes (que tenham valores numéricos)
+            let ativos = [];
+            for (let i = 1; i < json.length; i++) {
+                const linha = json[i];
+                if (!linha || linha.length === 0) continue;
+                
+                // Procura qualquer coluna com valor numérico (R$)
+                let nomeAtivo = "";
+                let valor = 0;
+                
+                for (let j = 0; j < Math.min(linha.length, headers.length); j++) {
+                    const cell = linha[j];
+                    if (!cell || cell === "") continue;
+                    
+                    // Se parece com nome (texto e não número)
+                    if (typeof cell === 'string' && cell.length > 1 && !cell.includes('R$') && !cell.includes('%')) {
+                        if (nomeAtivo === "") nomeAtivo = cell;
+                    }
+                    
+                    // Extrai valor monetário
+                    let valorNum = 0;
+                    if (typeof cell === 'number') {
+                        valorNum = cell;
+                    } else if (typeof cell === 'string') {
+                        const match = cell.match(/R?\$?\s*([\d\.\,]+)/);
+                        if (match) {
+                            valorNum = parseFloat(match[1].replace(/\./g, '').replace(',', '.'));
+                        }
+                    }
+                    
+                    if (valorNum > 0 && valorNum < 1000000000) {
+                        valor = valorNum;
+                    }
+                }
+                
+                if (nomeAtivo && valor > 0) {
+                    ativos.push({ nome: nomeAtivo, valor: valor });
+                }
+            }
+            
+            if (ativos.length === 0) {
+                alert("Nenhum ativo com valor identificado. Tente o Modo Manual.");
+                return;
+            }
+            
+            // Classifica e soma por classe
+            let somaPorClasse = {};
+            classes.forEach(c => somaPorClasse[c] = 0);
+            let totalPatrimonio = 0;
+            
+            ativos.forEach(ativo => {
+                const classe = classificarAtivo(ativo.nome);
+                somaPorClasse[classe] += ativo.valor;
+                totalPatrimonio += ativo.valor;
+            });
+            
+            if (totalPatrimonio === 0) {
+                alert("Patrimônio total não identificado.");
+                return;
+            }
+            
+            // Converte para percentual e preenche inputs
+            classes.forEach(classe => {
+                const pct = (somaPorClasse[classe] / totalPatrimonio) * 100;
+                if (inputsAtuais[classe]) {
+                    inputsAtuais[classe].value = pct.toFixed(2);
+                }
+            });
+            
+            atualizarTotal();
+            
+            // Exibe detalhes
+            const detalhesDiv = document.getElementById("detalhesImportacao");
+            detalhesDiv.innerHTML = `<strong>✅ Importação concluída!</strong><br>
+                📊 Ativos identificados: ${ativos.length}<br>
+                💰 Patrimônio total: R$ ${totalPatrimonio.toLocaleString('pt-BR')}<br><br>
+                <strong>Classificação automática:</strong><br>
+                ${Object.entries(somaPorClasse).filter(([k,v]) => v>0).map(([k,v]) => `${k}: ${((v/totalPatrimonio)*100).toFixed(1)}%`).join('<br>')}
+            `;
+            detalhesDiv.classList.add("show");
+            
+            alert(`✅ Importado! ${ativos.length} ativos identificados.\nPatrimônio: R$ ${totalPatrimonio.toLocaleString('pt-BR')}`);
+            
+            // Se modo manual, prepara opções de mapeamento
+            if (modoAtual === "manual") {
+                prepararMapeamentoManual(ativos);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+    
+    function prepararMapeamentoManual(ativos) {
+        const selectNome = document.getElementById("colunaNome");
+        const selectValor = document.getElementById("colunaValor");
+        // Popula com exemplos
+        selectNome.innerHTML = '<option value="">Selecione a coluna com nome do ativo</option>';
+        selectValor.innerHTML = '<option value="">Selecione a coluna com valor (R$)</option>';
+        
+        colunasExcel.forEach(col => {
+            selectNome.innerHTML += `<option value="${col}">${col}</option>`;
+            selectValor.innerHTML += `<option value="${col}">${col}</option>`;
+        });
+    }
+    
+    function aplicarMapeamentoManual() {
+        alert("Modo manual: Você pode ajustar os percentuais diretamente nos campos acima após a importação.");
+    }
+    
+    // Renderiza tabela recomendada
+    function renderRecomendada() {
+        const container = document.getElementById("recomendada-tabela");
+        const rec = carteiraRecomendada[perfilAtual];
+        let html = `<table style="width:100%"><thead><tr><th>Classe</th><th>% Alvo</th></tr></thead><tbody>`;
+        classes.forEach(c => { html += `<tr><td>${c}</td><td style="text-align:center">${rec[c].toFixed(1)}%</td></tr>`; });
+        html += `</tbody></table><div style="margin-top:12px; background:#e6f7ff; padding:8px; border-radius:12px;">🎯 Perfil ${perfilAtual}</div>`;
+        container.innerHTML = html;
+    }
+    
+    function executarAnalise() {
+        let atual = {};
+        let total = 0;
+        classes.forEach(c => { let v = parseFloat(inputsAtuais[c]?.value) || 0; atual[c] = v; total += v; });
+        if (Math.abs(total - 100) > 0.05) {
+            document.getElementById("lista-recomendacoes").innerHTML = `<div style="color:red">❌ Total deve ser 100% (atual: ${total.toFixed(2)}%)</div>`;
+            return;
+        }
+        const alvo = carteiraRecomendada[perfilAtual];
+        let html = "";
+        classes.forEach(c => {
+            const diff = alvo[c] - atual[c];
+            let acao = "", classeBadge = "";
+            if (Math.abs(diff) < 0.05) { acao = "✅ Manter"; classeBadge = "manter"; }
+            else if (diff > 0) { acao = `🔼 Alocar +${diff.toFixed(2)}%`; classeBadge = "alocar"; }
+            else { acao = `🔽 Retirar ${Math.abs(diff).toFixed(2)}%`; classeBadge = "retirar"; }
+            html += `<div class="resultado-item"><span>${c}</span><span>Atual: ${atual[c].toFixed(2)}% | Alvo: ${alvo[c].toFixed(2)}%</span><span class="badge ${classeBadge}">${acao}</span></div>`;
+        });
+        document.getElementById("lista-recomendacoes").innerHTML = html;
+    }
+    
+    function setPerfil(perfil) {
+        perfilAtual = perfil;
+        document.querySelectorAll(".perfil-btn").forEach(btn => {
+            if (btn.getAttribute("data-perfil") === perfil) btn.classList.add("active");
+            else btn.classList.remove("active");
+        });
+        renderRecomendada();
+    }
+    
+    function init() {
+        renderInputsAlocacao();
+        renderRecomendada();
+        setPerfil("Moderado");
+        
+        document.getElementById("btnAnalisar").onclick = executarAnalise;
+        document.getElementById("btnProcessarExcel").onclick = () => {
+            const file = document.getElementById("fileExcel").files[0];
+            if (!file) { alert("Selecione um arquivo"); return; }
+            processarExcelUniversal(file);
+        };
+        document.getElementById("btnMapear").onclick = aplicarMapeamentoManual;
+        
+        document.querySelectorAll(".modo-btn").forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll(".modo-btn").forEach(b => b.classList.remove("active"));
+                btn.classList.add("active");
+                modoAtual = btn.getAttribute("data-modo");
+                document.getElementById("mapeamentoManual").classList.toggle("show", modoAtual === "manual");
+            };
+        });
+        
+        document.querySelectorAll(".perfil-btn").forEach(btn => {
+            btn.onclick = () => setPerfil(btn.getAttribute("data-perfil"));
+        });
+    }
+    
+    init();
+</script>
+</body>
+</html>
