@@ -3,246 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Rebalanceador de Carteira - Universal</title>
+    <title>Rebalanceador de Carteira - Classificação Inteligente</title>
     <style>
-        * {
-            box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        }
-        body {
-            background: linear-gradient(135deg, #0b2b3b 0%, #1a4a5f 100%);
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-        }
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        .card {
-            background: white;
-            border-radius: 24px;
-            box-shadow: 0 20px 35px rgba(0,0,0,0.2);
-            padding: 25px 30px;
-            margin-bottom: 25px;
-        }
-        h1 {
-            margin: 0 0 8px 0;
-            color: #0b2b3b;
-            font-size: 28px;
-        }
-        .sub {
-            color: #5f6c7a;
-            margin-bottom: 20px;
-            border-left: 4px solid #2c7da0;
-            padding-left: 15px;
-        }
-        .upload-area {
-            background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
-            border: 2px dashed #2c7da0;
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 25px;
-        }
-        .upload-area h3 {
-            margin: 0 0 10px 0;
-            color: #0b2b3b;
-        }
-        .file-input-wrapper {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        input[type="file"] {
-            padding: 10px;
-            border: 1px solid #cbd5e1;
-            border-radius: 12px;
-            background: white;
-        }
-        .btn-excel {
-            background: #2c7da0;
-            color: white;
-            border: none;
-            padding: 10px 24px;
-            border-radius: 40px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .btn-excel:hover {
-            background: #1a5a75;
-        }
-        .modo-selector {
-            display: flex;
-            gap: 10px;
-            margin: 15px 0;
-            justify-content: center;
-        }
-        .modo-btn {
-            padding: 8px 20px;
-            border: 2px solid #2c7da0;
-            background: white;
-            border-radius: 30px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        .modo-btn.active {
-            background: #2c7da0;
-            color: white;
-        }
-        .mapeamento-manual {
-            display: none;
-            margin-top: 15px;
-            padding: 15px;
-            background: #fef9e3;
-            border-radius: 12px;
-        }
-        .mapeamento-manual.show {
-            display: block;
-        }
-        .classe-mapeamento {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
-            flex-wrap: wrap;
-        }
-        .classe-mapeamento select {
-            padding: 5px 10px;
-            border-radius: 8px;
-        }
-        .perfil-buttons {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            margin-bottom: 30px;
-        }
-        .perfil-btn {
-            flex: 1;
-            min-width: 120px;
-            padding: 14px 20px;
-            font-size: 18px;
-            font-weight: bold;
-            border: 2px solid #cbd5e1;
-            background: #f8fafc;
-            border-radius: 40px;
-            cursor: pointer;
-        }
-        .perfil-btn.active {
-            background: #0b2b3b;
-            border-color: #0b2b3b;
-            color: white;
-        }
-        .grid-2cols {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 25px;
-        }
-        @media (max-width: 850px) {
-            .grid-2cols {
-                grid-template-columns: 1fr;
-            }
-        }
-        .classe-input {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            background: #f1f5f9;
-            padding: 10px 15px;
-            border-radius: 16px;
-            margin-bottom: 10px;
-        }
-        .classe-nome {
-            width: 170px;
-            font-weight: 500;
-        }
-        .classe-valor {
-            flex: 1;
-            display: flex;
-            gap: 8px;
-        }
-        input {
-            width: 100%;
-            padding: 10px 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: 12px;
-            text-align: right;
-        }
-        .total-aviso {
-            margin-top: 20px;
-            padding: 12px;
-            background: #fef9e3;
-            border-radius: 16px;
-            text-align: center;
-            font-weight: bold;
-        }
-        .total-ok {
-            background: #e0f2fe;
-            color: #0369a1;
-        }
-        button.analisar {
-            width: 100%;
-            margin-top: 20px;
-            padding: 16px;
-            background: #0b2b3b;
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            border: none;
-            border-radius: 40px;
-            cursor: pointer;
-        }
-        .resultado-card {
-            background: #f8fafc;
-            border-radius: 20px;
-            padding: 15px;
-            margin-top: 20px;
-            border-left: 6px solid #0b2b3b;
-        }
-        .resultado-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 10px;
-            border-bottom: 1px solid #e2e8f0;
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-        .badge {
-            display: inline-block;
-            padding: 5px 14px;
-            border-radius: 30px;
-            font-weight: bold;
-            font-size: 13px;
-        }
+        * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
+        body { background: linear-gradient(135deg, #0b2b3b 0%, #1a4a5f 100%); margin: 0; padding: 20px; min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .card { background: white; border-radius: 24px; box-shadow: 0 20px 35px rgba(0,0,0,0.2); padding: 25px 30px; margin-bottom: 25px; }
+        h1 { margin: 0 0 8px 0; color: #0b2b3b; font-size: 28px; }
+        .sub { color: #5f6c7a; margin-bottom: 20px; border-left: 4px solid #2c7da0; padding-left: 15px; }
+        .upload-area { background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%); border: 2px dashed #2c7da0; border-radius: 20px; padding: 20px; margin-bottom: 25px; text-align: center; }
+        .file-input-wrapper { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; align-items: center; }
+        input[type="file"] { padding: 10px; border: 1px solid #cbd5e1; border-radius: 12px; background: white; }
+        .btn-excel { background: #2c7da0; color: white; border: none; padding: 10px 24px; border-radius: 40px; font-weight: bold; cursor: pointer; }
+        .btn-excel:hover { background: #1a5a75; }
+        .perfil-buttons { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 30px; }
+        .perfil-btn { flex: 1; min-width: 120px; padding: 14px 20px; font-size: 18px; font-weight: bold; border: 2px solid #cbd5e1; background: #f8fafc; border-radius: 40px; cursor: pointer; }
+        .perfil-btn.active { background: #0b2b3b; border-color: #0b2b3b; color: white; }
+        .grid-2cols { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; }
+        @media (max-width: 850px) { .grid-2cols { grid-template-columns: 1fr; } }
+        .classe-input { display: flex; align-items: center; gap: 12px; background: #f1f5f9; padding: 10px 15px; border-radius: 16px; margin-bottom: 10px; }
+        .classe-nome { width: 170px; font-weight: 500; }
+        .classe-valor { flex: 1; display: flex; gap: 8px; }
+        input { width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 12px; text-align: right; }
+        .total-aviso { margin-top: 20px; padding: 12px; background: #fef9e3; border-radius: 16px; text-align: center; font-weight: bold; }
+        .total-ok { background: #e0f2fe; color: #0369a1; }
+        button.analisar { width: 100%; margin-top: 20px; padding: 16px; background: #0b2b3b; color: white; font-size: 18px; font-weight: bold; border: none; border-radius: 40px; cursor: pointer; }
+        .resultado-card { background: #f8fafc; border-radius: 20px; padding: 15px; margin-top: 20px; border-left: 6px solid #0b2b3b; }
+        .resultado-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 10px; border-bottom: 1px solid #e2e8f0; flex-wrap: wrap; gap: 10px; }
+        .badge { display: inline-block; padding: 5px 14px; border-radius: 30px; font-weight: bold; font-size: 13px; }
         .manter { background: #d1fae5; color: #065f46; }
         .alocar { background: #fee2e2; color: #b91c1c; }
         .retirar { background: #ffedd5; color: #9a3412; }
-        .legenda {
-            display: flex;
-            gap: 20px;
-            justify-content: center;
-            margin-top: 15px;
-            flex-wrap: wrap;
-        }
-        .footer {
-            text-align: center;
-            color: #cbd5e1;
-            font-size: 13px;
-            margin-top: 20px;
-        }
-        .detalhes-importacao {
-            background: #e0f2fe;
-            padding: 12px;
-            border-radius: 12px;
-            margin-top: 15px;
-            font-size: 13px;
-            display: none;
-        }
-        .detalhes-importacao.show {
-            display: block;
-        }
+        .legenda { display: flex; gap: 20px; justify-content: center; margin-top: 15px; flex-wrap: wrap; }
+        .footer { text-align: center; color: #cbd5e1; font-size: 13px; margin-top: 20px; }
+        .detalhes-importacao { background: #e0f2fe; padding: 12px; border-radius: 12px; margin-top: 15px; font-size: 13px; display: none; }
+        .detalhes-importacao.show { display: block; }
+        .classificacao-detalhe { font-size: 11px; color: #555; margin-top: 5px; }
     </style>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 </head>
@@ -250,39 +46,17 @@
 <div class="container">
     <div class="card">
         <h1>📊 Rebalanceador de Carteira</h1>
-        <div class="sub">Importe qualquer Excel de posição consolidada (XP, BTG, Rico, ou planilha própria)</div>
+        <div class="sub">Classifica automaticamente: Ações, Fundos (FIA/FIM/FIRF), Previdência (PGBL/VGBL)</div>
         
         <div class="upload-area">
-            <h3>📎 Upload da planilha do cliente</h3>
+            <h3>📎 Upload da planilha do cliente (formato XP, BTG, Rico ou planilha própria)</h3>
             <div class="file-input-wrapper">
                 <input type="file" id="fileExcel" accept=".xlsx, .xls, .csv" />
-                <button class="btn-excel" id="btnProcessarExcel">📂 Importar e analisar</button>
+                <button class="btn-excel" id="btnProcessarExcel">📂 Importar e classificar</button>
             </div>
-            
-            <div class="modo-selector">
-                <button class="modo-btn active" data-modo="auto">🤖 Modo Automático</button>
-                <button class="modo-btn" data-modo="manual">✋ Modo Manual (mapear colunas)</button>
+            <div style="font-size:12px; margin-top:10px;">
+                ✅ Reconhece: Ações, FIA, FIM, FIRF (Pós/Pré/IPCA), Previdência, Fundos Globais
             </div>
-            
-            <div id="mapeamentoManual" class="mapeamento-manual">
-                <strong>🔧 Mapeie as colunas do seu Excel:</strong>
-                <div class="classe-mapeamento">
-                    <span>Coluna com nome do ativo/fundo:</span>
-                    <select id="colunaNome"></select>
-                </div>
-                <div class="classe-mapeamento">
-                    <span>Coluna com valor (R$):</span>
-                    <select id="colunaValor"></select>
-                </div>
-                <div class="classe-mapeamento">
-                    <span>Coluna com classe (opcional):</span>
-                    <select id="colunaClasse">
-                        <option value="">-- Automático por palavra-chave --</option>
-                    </select>
-                </div>
-                <button class="btn-excel" id="btnMapear" style="margin-top:10px;">✅ Aplicar mapeamento</button>
-            </div>
-            
             <div id="detalhesImportacao" class="detalhes-importacao"></div>
         </div>
         
@@ -298,7 +72,6 @@
                 <div id="inputs-alocacao"></div>
                 <div id="total-atual-msg" class="total-aviso">🔴 Total: 0% (deve ser 100%)</div>
             </div>
-            
             <div>
                 <h3>📈 Carteira Recomendada</h3>
                 <div id="recomendada-tabela" style="background:#f1f5f9; border-radius:16px; padding:12px;"></div>
@@ -306,9 +79,7 @@
                 <div id="resultado-area" style="margin-top:20px;">
                     <div class="resultado-card">
                         <strong>📋 Recomendações:</strong>
-                        <div id="lista-recomendacoes" style="margin-top:12px;">
-                            <span style="color:#777;">Clique em "Analisar" após preencher os percentuais.</span>
-                        </div>
+                        <div id="lista-recomendacoes" style="margin-top:12px;"><span style="color:#777;">Clique em "Analisar" após preencher os percentuais.</span></div>
                         <div class="legenda">
                             <span><span class="badge manter">✅ Manter</span></span>
                             <span><span class="badge alocar">🔼 Alocar +</span></span>
@@ -319,13 +90,11 @@
             </div>
         </div>
     </div>
-    <div class="footer">📌 Indicado para equipe de investimentos | Compatível com qualquer extrato bancário/corretora</div>
+    <div class="footer">📌 Classificação inteligente: soma automática de todos os ativos da mesma classe (ex: todos prefixados → Renda Fixa Pré)</div>
 </div>
 
 <script>
-    // ========================
-    // PERFIS (já existentes)
-    // ========================
+    // ======================== PERFIS ========================
     const carteiraRecomendada = {
         Conservador: { "Renda Fixa Pós": 85, "Renda Fixa Pré": 15, "Renda Fixa Inflação": 0, "Multiestratégia": 0, "Renda Variável": 0, "Renda Fixa Global": 0, "Renda Variável Global": 0, "Alternativo": 0 },
         Moderado: { "Renda Fixa Pós": 54, "Renda Fixa Pré": 13, "Renda Fixa Inflação": 20, "Multiestratégia": 5, "Renda Variável": 4, "Renda Fixa Global": 0, "Renda Variável Global": 4, "Alternativo": 0 },
@@ -334,25 +103,250 @@
     
     const classes = ["Renda Fixa Pós", "Renda Fixa Pré", "Renda Fixa Inflação", "Multiestratégia", "Renda Variável", "Renda Fixa Global", "Renda Variável Global", "Alternativo"];
     
-    // Palavras-chave para classificação automática
-    const keywordsMapping = {
-        "Renda Variável": ["ação", "acoes", "stock", "equity", "varejo", "bancos", "petr", "vale", "itub", "bbas", "b3sa"],
-        "Renda Variável Global": ["global", "internacional", "s&p", "nasdaq", "dolar", "sp500", "ivvb", "bdr", "trend bolsa", "wld"],
-        "Renda Fixa Pós": ["pós", "pos", "selic", "cdi", "tesouro selic", "lft", "pós-fixado"],
-        "Renda Fixa Pré": ["pré", "pre", "prefixado", "tesouro prefixado", "ltn"],
-        "Renda Fixa Inflação": ["inflação", "ipca", "ntn-b", "tesouro ipca", "ntnb"],
-        "Multiestratégia": ["multi", "multimercado", "macro", "hedge", "spread"],
-        "Renda Fixa Global": ["global fixed", "renda fixa global", "bonds", "treasury"],
-        "Alternativo": ["alternativo", "private", "venture", "crypto", "cripto", "imobiliario", "fii"]
-    };
-    
     let perfilAtual = "Moderado";
     let inputsAtuais = {};
-    let dadosExcel = [];
-    let colunasExcel = [];
-    let modoAtual = "auto";
     
-    // Renderiza inputs
+    // ======================== CLASSIFICAÇÃO INTELIGENTE ========================
+    // Regras baseadas nas siglas e palavras-chave
+    function classificarAtivo(nome, valor, secao) {
+        const nomeLower = nome.toLowerCase();
+        
+        // 1. PREVIDÊNCIA (PGBL/VGBL) - precisa ver o fundo subjacente
+        if (nomeLower.includes("prev") || nomeLower.includes("pgbl") || nomeLower.includes("vgbl") || secao === "PREVIDENCIA") {
+            // Verifica o tipo do fundo de previdência pelo nome
+            if (nomeLower.includes("fia") || nomeLower.includes("ações") || nomeLower.includes("acoes")) {
+                return { classe: "Renda Variável", detalhe: "Previdência Ações" };
+            }
+            if (nomeLower.includes("fim") || nomeLower.includes("multimercado")) {
+                return { classe: "Multiestratégia", detalhe: "Previdência Multimercado" };
+            }
+            if (nomeLower.includes("ipca") || nomeLower.includes("inflação")) {
+                return { classe: "Renda Fixa Inflação", detalhe: "Previdência Inflação" };
+            }
+            if (nomeLower.includes("prefixado") || nomeLower.includes("pré")) {
+                return { classe: "Renda Fixa Pré", detalhe: "Previdência Prefixado" };
+            }
+            // Default: previdência como Renda Fixa Pós (mais comum)
+            return { classe: "Renda Fixa Pós", detalhe: "Previdência Pós-fixada" };
+        }
+        
+        // 2. FUNDOS DE AÇÕES (FIA)
+        if (nomeLower.includes("fia") || (nomeLower.includes("fundo") && nomeLower.includes("ação"))) {
+            return { classe: "Renda Variável", detalhe: "FIA - Fundo de Ações" };
+        }
+        
+        // 3. FUNDOS MULTIMERCADO (FIM)
+        if (nomeLower.includes("fim") || nomeLower.includes("multimercado") || nomeLower.includes("multi mercado")) {
+            return { classe: "Multiestratégia", detalhe: "FIM - Multimercado" };
+        }
+        
+        // 4. FUNDOS DE RENDA FIXA (FIRF)
+        if (nomeLower.includes("firf") || (nomeLower.includes("fundo") && nomeLower.includes("renda fixa"))) {
+            // Renda Fixa Pós (CDI, Selic)
+            if (nomeLower.includes("pós") || nomeLower.includes("pos") || nomeLower.includes("cdi") || nomeLower.includes("selic")) {
+                return { classe: "Renda Fixa Pós", detalhe: "FIRF Pós-fixado" };
+            }
+            // Renda Fixa Pré (prefixado)
+            if (nomeLower.includes("pré") || nomeLower.includes("pre") || nomeLower.includes("prefixado")) {
+                return { classe: "Renda Fixa Pré", detalhe: "FIRF Prefixado" };
+            }
+            // Renda Fixa Inflação (IPCA)
+            if (nomeLower.includes("ipca") || nomeLower.includes("inflação") || nomeLower.includes("inflacao")) {
+                return { classe: "Renda Fixa Inflação", detalhe: "FIRF Inflação" };
+            }
+            return { classe: "Renda Fixa Pós", detalhe: "FIRF (padrão Pós)" };
+        }
+        
+        // 5. FUNDOS GLOBAIS / INTERNACIONAIS
+        if (nomeLower.includes("global") || nomeLower.includes("internacional") || nomeLower.includes("dólar") || nomeLower.includes("dolar") || nomeLower.includes("nasdaq") || nomeLower.includes("s&p")) {
+            if (nomeLower.includes("fixa") || nomeLower.includes("bonds")) {
+                return { classe: "Renda Fixa Global", detalhe: "Renda Fixa Global" };
+            }
+            return { classe: "Renda Variável Global", detalhe: "Renda Variável Global" };
+        }
+        
+        // 6. AÇÕES INDIVIDUAIS (códigos de 4-5 letras + número como PETR4, VALE3)
+        const codigoAcao = /^[A-Z]{4}\d{1,2}$/i;
+        if (codigoAcao.test(nome.trim()) || nomeLower.includes("ação") || nomeLower.includes("acao") || secao === "ACOES") {
+            return { classe: "Renda Variável", detalhe: "Ação" };
+        }
+        
+        // 7. FUNDOS IMOBILIÁRIOS (FII)
+        if (nomeLower.includes("fii") || nomeLower.includes("imobiliário") || nomeLower.includes("imobiliario")) {
+            return { classe: "Alternativo", detalhe: "FII - Fundo Imobiliário" };
+        }
+        
+        // 8. Default: se não identificar, joga em Renda Variável
+        return { classe: "Renda Variável", detalhe: "Não classificado (default)" };
+    }
+    
+    // ======================== PROCESSAR EXCEL ========================
+    let classificacoesDetalhadas = [];
+    
+    function processarExcel(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+            
+            if (!json || json.length < 2) { alert("Arquivo vazio ou inválido."); return; }
+            
+            // Variáveis para somar por classe
+            let somaPorClasse = {};
+            classes.forEach(c => somaPorClasse[c] = 0);
+            let totalPatrimonio = 0;
+            classificacoesDetalhadas = [];
+            
+            let secaoAtual = "";
+            let ativosEncontrados = [];
+            
+            // Primeiro, identifica as seções do Excel
+            for (let i = 0; i < json.length; i++) {
+                const linha = json[i];
+                if (!linha || linha.length === 0) continue;
+                
+                const textoLinha = linha.join(" ").toLowerCase();
+                
+                if (textoLinha.includes("ações") && (textoLinha.includes("%") || textoLinha.includes("ação"))) {
+                    secaoAtual = "ACOES";
+                    continue;
+                }
+                if (textoLinha.includes("fundos de investimento") || textoLinha.includes("fundos")) {
+                    secaoAtual = "FUNDOS";
+                    continue;
+                }
+                if (textoLinha.includes("previdência") || textoLinha.includes("previdencia") || textoLinha.includes("pgbl") || textoLinha.includes("vgbl")) {
+                    secaoAtual = "PREVIDENCIA";
+                    continue;
+                }
+                
+                // Procura por linhas com nome de ativo e valor
+                let nomeAtivo = "";
+                let valor = 0;
+                
+                for (let j = 0; j < Math.min(linha.length, 15); j++) {
+                    const cell = linha[j];
+                    if (!cell || cell === "") continue;
+                    
+                    // Identifica nome (texto com mais de 2 caracteres, sem símbolos monetários)
+                    if (typeof cell === 'string' && cell.length > 2 && !cell.includes('R$') && !cell.includes('%') && !cell.includes('Data')) {
+                        if (nomeAtivo === "") nomeAtivo = cell;
+                    }
+                    
+                    // Extrai valor monetário
+                    let valorNum = 0;
+                    if (typeof cell === 'number' && cell > 0 && cell < 1000000000) {
+                        valorNum = cell;
+                    } else if (typeof cell === 'string') {
+                        const match = cell.match(/R?\$?\s*([\d\.\,]+)/);
+                        if (match) {
+                            valorNum = parseFloat(match[1].replace(/\./g, '').replace(',', '.'));
+                        }
+                    }
+                    
+                    if (valorNum > 0 && valorNum < 1000000000) {
+                        valor = valorNum;
+                    }
+                }
+                
+                if (nomeAtivo && valor > 0 && !nomeAtivo.includes("Total") && !nomeAtivo.includes("Saldo")) {
+                    ativosEncontrados.push({ nome: nomeAtivo, valor: valor, secao: secaoAtual });
+                }
+            }
+            
+            // Se não encontrou pela busca por seções, tenta método alternativo (linha por linha)
+            if (ativosEncontrados.length === 0) {
+                for (let i = 1; i < json.length; i++) {
+                    const linha = json[i];
+                    if (!linha || linha.length === 0) continue;
+                    
+                    let nomeAtivo = "";
+                    let valor = 0;
+                    
+                    for (let j = 0; j < Math.min(linha.length, 10); j++) {
+                        const cell = linha[j];
+                        if (!cell) continue;
+                        
+                        if (typeof cell === 'string' && cell.length > 2 && cell.length < 30 && !cell.includes('R$') && !cell.includes('%')) {
+                            nomeAtivo = cell;
+                        }
+                        if (typeof cell === 'number' && cell > 0 && cell < 1000000000) {
+                            valor = cell;
+                        }
+                        if (typeof cell === 'string') {
+                            const match = cell.match(/R?\$?\s*([\d\.\,]+)/);
+                            if (match && !nomeAtivo) {
+                                valor = parseFloat(match[1].replace(/\./g, '').replace(',', '.'));
+                            }
+                        }
+                    }
+                    
+                    if (nomeAtivo && valor > 0 && !nomeAtivo.includes("Total")) {
+                        ativosEncontrados.push({ nome: nomeAtivo, valor: valor, secao: "" });
+                    }
+                }
+            }
+            
+            if (ativosEncontrados.length === 0) {
+                alert("Nenhum ativo encontrado. Verifique o formato do arquivo.");
+                return;
+            }
+            
+            // Classifica cada ativo e soma
+            ativosEncontrados.forEach(ativo => {
+                const classificacao = classificarAtivo(ativo.nome, ativo.valor, ativo.secao);
+                somaPorClasse[classificacao.classe] += ativo.valor;
+                totalPatrimonio += ativo.valor;
+                classificacoesDetalhadas.push({
+                    nome: ativo.nome,
+                    valor: ativo.valor,
+                    classe: classificacao.classe,
+                    detalhe: classificacao.detalhe
+                });
+            });
+            
+            if (totalPatrimonio === 0) { alert("Patrimônio total não identificado."); return; }
+            
+            // Preenche os inputs com os percentuais
+            classes.forEach(classe => {
+                const pct = (somaPorClasse[classe] / totalPatrimonio) * 100;
+                if (inputsAtuais[classe]) {
+                    inputsAtuais[classe].value = pct.toFixed(2);
+                }
+            });
+            
+            atualizarTotal();
+            
+            // Exibe detalhes da classificação
+            const detalhesDiv = document.getElementById("detalhesImportacao");
+            let detalhesHtml = `<strong>✅ Importação concluída!</strong><br>
+                📊 Ativos identificados: ${ativosEncontrados.length}<br>
+                💰 Patrimônio total: R$ ${totalPatrimonio.toLocaleString('pt-BR')}<br><br>
+                <strong>📋 Classificação por classe:</strong><br>`;
+            
+            for (let [classe, valor] of Object.entries(somaPorClasse)) {
+                if (valor > 0) {
+                    const pct = (valor / totalPatrimonio) * 100;
+                    detalhesHtml += `${classe}: R$ ${valor.toLocaleString('pt-BR')} (${pct.toFixed(1)}%)<br>`;
+                }
+            }
+            
+            detalhesHtml += `<br><strong>🔍 Detalhamento dos ativos:</strong><br>`;
+            classificacoesDetalhadas.forEach(item => {
+                detalhesHtml += `<span style="font-size:11px;">• ${item.nome}: R$ ${item.valor.toLocaleString('pt-BR')} → ${item.classe} (${item.detalhe})</span><br>`;
+            });
+            
+            detalhesDiv.innerHTML = detalhesHtml;
+            detalhesDiv.classList.add("show");
+            
+            alert(`✅ Importado! ${ativosEncontrados.length} ativos identificados.\nPatrimônio: R$ ${totalPatrimonio.toLocaleString('pt-BR')}`);
+        };
+        reader.readAsArrayBuffer(file);
+    }
+    
+    // ======================== FUNÇÕES DA INTERFACE ========================
     function renderInputsAlocacao() {
         const container = document.getElementById("inputs-alocacao");
         container.innerHTML = "";
@@ -391,145 +385,6 @@
         }
     }
     
-    // Classifica um ativo baseado no nome (palavras-chave)
-    function classificarAtivo(nome) {
-        const nomeLower = nome.toLowerCase();
-        for (let [classe, keywords] of Object.entries(keywordsMapping)) {
-            for (let kw of keywords) {
-                if (nomeLower.includes(kw)) return classe;
-            }
-        }
-        // Default: se não encontrar, joga em Renda Variável (conservador)
-        return "Renda Variável";
-    }
-    
-    // Processa Excel de forma GENÉRICA
-    function processarExcelUniversal(file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
-            
-            if (!json || json.length < 2) {
-                alert("Arquivo vazio ou inválido.");
-                return;
-            }
-            
-            // Primeira linha = cabeçalho
-            const headers = json[0].map(h => String(h || "").trim());
-            colunasExcel = headers;
-            
-            // Extrai dados das linhas seguintes (que tenham valores numéricos)
-            let ativos = [];
-            for (let i = 1; i < json.length; i++) {
-                const linha = json[i];
-                if (!linha || linha.length === 0) continue;
-                
-                // Procura qualquer coluna com valor numérico (R$)
-                let nomeAtivo = "";
-                let valor = 0;
-                
-                for (let j = 0; j < Math.min(linha.length, headers.length); j++) {
-                    const cell = linha[j];
-                    if (!cell || cell === "") continue;
-                    
-                    // Se parece com nome (texto e não número)
-                    if (typeof cell === 'string' && cell.length > 1 && !cell.includes('R$') && !cell.includes('%')) {
-                        if (nomeAtivo === "") nomeAtivo = cell;
-                    }
-                    
-                    // Extrai valor monetário
-                    let valorNum = 0;
-                    if (typeof cell === 'number') {
-                        valorNum = cell;
-                    } else if (typeof cell === 'string') {
-                        const match = cell.match(/R?\$?\s*([\d\.\,]+)/);
-                        if (match) {
-                            valorNum = parseFloat(match[1].replace(/\./g, '').replace(',', '.'));
-                        }
-                    }
-                    
-                    if (valorNum > 0 && valorNum < 1000000000) {
-                        valor = valorNum;
-                    }
-                }
-                
-                if (nomeAtivo && valor > 0) {
-                    ativos.push({ nome: nomeAtivo, valor: valor });
-                }
-            }
-            
-            if (ativos.length === 0) {
-                alert("Nenhum ativo com valor identificado. Tente o Modo Manual.");
-                return;
-            }
-            
-            // Classifica e soma por classe
-            let somaPorClasse = {};
-            classes.forEach(c => somaPorClasse[c] = 0);
-            let totalPatrimonio = 0;
-            
-            ativos.forEach(ativo => {
-                const classe = classificarAtivo(ativo.nome);
-                somaPorClasse[classe] += ativo.valor;
-                totalPatrimonio += ativo.valor;
-            });
-            
-            if (totalPatrimonio === 0) {
-                alert("Patrimônio total não identificado.");
-                return;
-            }
-            
-            // Converte para percentual e preenche inputs
-            classes.forEach(classe => {
-                const pct = (somaPorClasse[classe] / totalPatrimonio) * 100;
-                if (inputsAtuais[classe]) {
-                    inputsAtuais[classe].value = pct.toFixed(2);
-                }
-            });
-            
-            atualizarTotal();
-            
-            // Exibe detalhes
-            const detalhesDiv = document.getElementById("detalhesImportacao");
-            detalhesDiv.innerHTML = `<strong>✅ Importação concluída!</strong><br>
-                📊 Ativos identificados: ${ativos.length}<br>
-                💰 Patrimônio total: R$ ${totalPatrimonio.toLocaleString('pt-BR')}<br><br>
-                <strong>Classificação automática:</strong><br>
-                ${Object.entries(somaPorClasse).filter(([k,v]) => v>0).map(([k,v]) => `${k}: ${((v/totalPatrimonio)*100).toFixed(1)}%`).join('<br>')}
-            `;
-            detalhesDiv.classList.add("show");
-            
-            alert(`✅ Importado! ${ativos.length} ativos identificados.\nPatrimônio: R$ ${totalPatrimonio.toLocaleString('pt-BR')}`);
-            
-            // Se modo manual, prepara opções de mapeamento
-            if (modoAtual === "manual") {
-                prepararMapeamentoManual(ativos);
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-    
-    function prepararMapeamentoManual(ativos) {
-        const selectNome = document.getElementById("colunaNome");
-        const selectValor = document.getElementById("colunaValor");
-        // Popula com exemplos
-        selectNome.innerHTML = '<option value="">Selecione a coluna com nome do ativo</option>';
-        selectValor.innerHTML = '<option value="">Selecione a coluna com valor (R$)</option>';
-        
-        colunasExcel.forEach(col => {
-            selectNome.innerHTML += `<option value="${col}">${col}</option>`;
-            selectValor.innerHTML += `<option value="${col}">${col}</option>`;
-        });
-    }
-    
-    function aplicarMapeamentoManual() {
-        alert("Modo manual: Você pode ajustar os percentuais diretamente nos campos acima após a importação.");
-    }
-    
-    // Renderiza tabela recomendada
     function renderRecomendada() {
         const container = document.getElementById("recomendada-tabela");
         const rec = carteiraRecomendada[perfilAtual];
@@ -573,24 +428,12 @@
         renderInputsAlocacao();
         renderRecomendada();
         setPerfil("Moderado");
-        
         document.getElementById("btnAnalisar").onclick = executarAnalise;
         document.getElementById("btnProcessarExcel").onclick = () => {
             const file = document.getElementById("fileExcel").files[0];
             if (!file) { alert("Selecione um arquivo"); return; }
-            processarExcelUniversal(file);
+            processarExcel(file);
         };
-        document.getElementById("btnMapear").onclick = aplicarMapeamentoManual;
-        
-        document.querySelectorAll(".modo-btn").forEach(btn => {
-            btn.onclick = () => {
-                document.querySelectorAll(".modo-btn").forEach(b => b.classList.remove("active"));
-                btn.classList.add("active");
-                modoAtual = btn.getAttribute("data-modo");
-                document.getElementById("mapeamentoManual").classList.toggle("show", modoAtual === "manual");
-            };
-        });
-        
         document.querySelectorAll(".perfil-btn").forEach(btn => {
             btn.onclick = () => setPerfil(btn.getAttribute("data-perfil"));
         });
