@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Rebalanceador de Carteira XP - IA Inteligente</title>
+    <title>Rebalanceador de Carteira XP - Corrigido</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
         body { background: linear-gradient(135deg, #0b2b3b 0%, #1a4a5f 100%); margin: 0; padding: 20px; min-height: 100vh; }
@@ -45,8 +45,8 @@
 <body>
 <div class="container">
     <div class="card">
-        <h1>📊 Rebalanceador de Carteira XP - IA Inteligente</h1>
-        <div class="sub">Lê qualquer extrato XP automaticamente - Classifica por heurística inteligente</div>
+        <h1>📊 Rebalanceador de Carteira XP - Versão Corrigida</h1>
+        <div class="sub">Parser específico para o formato do extrato XP</div>
         
         <div class="upload-area">
             <h3>📎 Upload do extrato consolidado XP Investimentos</h3>
@@ -55,7 +55,7 @@
                 <button class="btn-excel" id="btnProcessarExcel">🤖 Importar automaticamente</button>
             </div>
             <div style="font-size:12px; margin-top:10px;">
-                ✅ Funciona com qualquer extrato XP - Identifica automaticamente ações, fundos, previdência e renda fixa
+                ✅ Compatível com o formato do extrato XP que você enviou
             </div>
             <div id="detalhesImportacao" class="detalhes-importacao"></div>
         </div>
@@ -105,25 +105,36 @@
     let perfilAtual = "Moderado";
     let inputsAtuais = {};
     
-    // Função inteligente para extrair valores monetários
     function extrairValorMonetario(texto) {
         if (!texto) return 0;
         if (typeof texto === 'number') return texto;
-        const textoStr = texto.toString().trim();
-        let limpo = textoStr.replace(/R\$/g, '').replace(/\./g, '').replace(',', '.').trim();
-        let valor = parseFloat(limpo);
-        if (!isNaN(valor) && valor > 0) return valor;
         
-        const match = textoStr.match(/(\d+[\.,]?\d*)/);
+        const textoStr = texto.toString().trim();
+        
+        // Tenta padrão: R$ 123.456,78
+        let match = textoStr.match(/R\$\s*([\d\.]+,\d+)/);
         if (match) {
-            valor = parseFloat(match[1].replace(',', '.'));
-            return isNaN(valor) ? 0 : valor;
+            let valor = match[1].replace(/\./g, '').replace(',', '.');
+            return parseFloat(valor);
         }
+        
+        // Tenta padrão: 123.456,78
+        match = textoStr.match(/([\d\.]+,\d+)/);
+        if (match) {
+            let valor = match[1].replace(/\./g, '').replace(',', '.');
+            return parseFloat(valor);
+        }
+        
+        // Tenta padrão: 123456.78
+        match = textoStr.match(/(\d+\.\d+)/);
+        if (match) {
+            return parseFloat(match[1]);
+        }
+        
         return 0;
     }
     
-    // Função principal de importação inteligente
-    function processarExcelXPInteligente(file) {
+    function processarExcelXP(file) {
         const reader = new FileReader();
         reader.onload = function(e) {
             const data = new Uint8Array(e.target.result);
@@ -131,216 +142,175 @@
             const sheet = workbook.Sheets[workbook.SheetNames[0]];
             const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
             
-            // Estrutura para acumular valores
-            let portfolio = {
-                acoes: 0,
-                rendaFixa: { prefixada: 0, posFixada: 0, inflacao: 0, outros: 0 },
-                fundos: { pos: 0, inflacao: 0, multimercado: 0, acoes: 0, cambial: 0 },
-                previdencia: { ficfia: 0, ficfim: 0, outros: 0 },
-                outros: 0
-            };
+            // Variáveis para acumular
+            let totalPatrimonio = 0;
+            let totalAcoes = 0;
+            let totalPrefixada = 0;
+            let totalPosFixada = 0;
+            let totalInflacao = 0;
+            let totalFundos = 0;
+            let totalFundosPos = 0;
+            let totalFundosInflacao = 0;
+            let totalFundosMulti = 0;
+            let totalPrevidencia = 0;
+            let totalPrevFicfia = 0;
+            let totalPrevFicfim = 0;
+            let totalPrevOutros = 0;
             
-            let totalGeral = 0;
-            let secoes = {};
+            // 1. Pegar o total investido (linha 4)
+            if (json[3] && json[3][1]) {
+                totalPatrimonio = extrairValorMonetario(json[3][1]);
+            }
             
-            // ========== PASSO 1: IDENTIFICAR SEÇÕES POR PADRÕES ==========
-            let secaoAtual = null;
-            
+            // 2. Varrer todas as linhas procurando os totais
             for (let i = 0; i < json.length; i++) {
                 const linha = json[i];
-                if (!linha || linha.length === 0) continue;
+                if (!linha) continue;
                 
-                const primeiraCelula = (linha[0] || "").toString().trim();
+                const primeiraCelula = linha[0] ? linha[0].toString() : "";
                 
-                // Detecta títulos de seção (padrão: "XX,XX%|Nome da Seção")
-                const matchSecao = primeiraCelula.match(/(\d+[\.,]?\d*)%\|(.+)/);
-                if (matchSecao) {
-                    const percentual = parseFloat(matchSecao[1].replace(',', '.'));
-                    const nomeSecao = matchSecao[2].toLowerCase();
-                    
-                    // Classifica a seção por heurística
-                    let tipo = null;
-                    if (nomeSecao.includes("ação") || nomeSecao.includes("acoes") || nomeSecao.includes("stock")) tipo = "acoes";
-                    else if (nomeSecao.includes("prefixada") || nomeSecao.includes("pre")) tipo = "prefixada";
-                    else if (nomeSecao.includes("pós") || nomeSecao.includes("pos") || nomeSecao.includes("cdi")) tipo = "posFixada";
-                    else if (nomeSecao.includes("inflação") || nomeSecao.includes("ipca")) tipo = "inflacao";
-                    else if (nomeSecao.includes("fundo")) tipo = "fundos";
-                    else if (nomeSecao.includes("previdência") || nomeSecao.includes("prev")) tipo = "previdencia";
-                    
-                    if (tipo) {
-                        secoes[i] = { tipo, nome: matchSecao[2], percentualDoTotal: percentual, linhaInicio: i };
-                        secaoAtual = i;
-                    }
-                    continue;
+                // Ações: linha com "3,80%|Ações" e valor na última coluna
+                if (primeiraCelula.includes("%|Ações") && linha[linha.length-1]) {
+                    totalAcoes = extrairValorMonetario(linha[linha.length-1]);
                 }
                 
-                // Detecta subseções dentro de fundos
-                const matchSubSecao = primeiraCelula.match(/(\d+[\.,]?\d*)%\|(.+)/);
-                if (matchSubSecao && secaoAtual && secoes[secaoAtual]?.tipo === "fundos") {
-                    const nomeSub = matchSubSecao[2].toLowerCase();
-                    let subTipo = null;
-                    if (nomeSub.includes("pós") || nomeSub.includes("pos") || nomeSub.includes("di")) subTipo = "pos";
-                    else if (nomeSub.includes("inflação") || nomeSub.includes("ipca")) subTipo = "inflacao";
-                    else if (nomeSub.includes("multimercado") || nomeSub.includes("multi")) subTipo = "multimercado";
-                    else if (nomeSub.includes("ação") || nomeSub.includes("acoes") || nomeSub.includes("renda variável")) subTipo = "acoes";
-                    else if (nomeSub.includes("cambial") || nomeSub.includes("dólar")) subTipo = "cambial";
+                // Prefixada: linha com "25,30%|Prefixada"
+                if (primeiraCelula.includes("%|Prefixada") && linha[linha.length-1]) {
+                    totalPrefixada = extrairValorMonetario(linha[linha.length-1]);
+                }
+                
+                // Pós-Fixada: linha com "7,00%|Pós-Fixada"
+                if (primeiraCelula.includes("%|Pós-Fixada") && linha[linha.length-1]) {
+                    totalPosFixada = extrairValorMonetario(linha[linha.length-1]);
+                }
+                
+                // Inflação: linha com "22,20%|Inflação"
+                if (primeiraCelula.includes("%|Inflação") && linha[linha.length-1]) {
+                    totalInflacao = extrairValorMonetario(linha[linha.length-1]);
+                }
+                
+                // Total de Fundos: linha com "21,7%|Fundos de Investimento"
+                if (primeiraCelula.includes("%|Fundos de Investimento")) {
+                    // Procura o valor em qualquer coluna
+                    for (let j = 1; j < linha.length; j++) {
+                        let val = extrairValorMonetario(linha[j]);
+                        if (val > 10000 && val < 10000000) {
+                            totalFundos = val;
+                            break;
+                        }
+                    }
+                }
+                
+                // Subcategorias dos Fundos
+                if (primeiraCelula.includes("Fundos de Renda Fixa Pós-Fixado")) {
+                    const match = primeiraCelula.match(/(\d+[\.,]?\d*)%/);
+                    if (match && totalFundos > 0) {
+                        totalFundosPos = totalFundos * (parseFloat(match[1].replace(',', '.')) / 100);
+                    }
+                }
+                
+                if (primeiraCelula.includes("Fundos de Inflação")) {
+                    const match = primeiraCelula.match(/(\d+[\.,]?\d*)%/);
+                    if (match && totalFundos > 0) {
+                        totalFundosInflacao = totalFundos * (parseFloat(match[1].replace(',', '.')) / 100);
+                    }
+                }
+                
+                if (primeiraCelula.includes("Fundos Multimercados")) {
+                    const match = primeiraCelula.match(/(\d+[\.,]?\d*)%/);
+                    if (match && totalFundos > 0) {
+                        totalFundosMulti = totalFundos * (parseFloat(match[1].replace(',', '.')) / 100);
+                    }
+                }
+                
+                // Previdência
+                if (primeiraCelula.includes("%|Previdência Privada")) {
+                    for (let j = 1; j < linha.length; j++) {
+                        let val = extrairValorMonetario(linha[j]);
+                        if (val > 10000 && val < 10000000) {
+                            totalPrevidencia = val;
+                            break;
+                        }
+                    }
                     
-                    if (subTipo) {
-                        secoes[i] = { tipo: "subfundos", subTipo, nome: matchSubSecao[2], percentualDoTotal: parseFloat(matchSubSecao[1].replace(',', '.')), linhaInicio: i };
+                    // Pegar os fundos de previdência nas próximas linhas
+                    let linhaPrevs = i + 3;
+                    while (json[linhaPrevs] && json[linhaPrevs][0] && !json[linhaPrevs][0].toString().includes("Custódia")) {
+                        const nomeFundo = json[linhaPrevs][0] ? json[linhaPrevs][0].toString().toLowerCase() : "";
+                        const valorFundo = extrairValorMonetario(json[linhaPrevs][json[linhaPrevs].length - 1]);
+                        
+                        if (valorFundo > 0 && valorFundo < totalPrevidencia) {
+                            if (nomeFundo.includes("ficfia")) {
+                                totalPrevFicfia += valorFundo;
+                            } else if (nomeFundo.includes("ficfim")) {
+                                totalPrevFicfim += valorFundo;
+                            } else {
+                                totalPrevOutros += valorFundo;
+                            }
+                        }
+                        linhaPrevs++;
                     }
                 }
             }
             
-            // ========== PASSO 2: EXTRAIR VALORES DAS SEÇÕES ==========
-            for (let i = 0; i < json.length; i++) {
-                const linha = json[i];
-                if (!linha || linha.length === 0) continue;
-                
-                // Procura por valores monetários no final da linha
-                const ultimaColuna = linha[linha.length - 1];
-                const penultimaColuna = linha[linha.length - 2];
-                let valor = 0;
-                
-                if (ultimaColuna && typeof ultimaColuna === 'string' && ultimaColuna.includes('R$')) {
-                    valor = extrairValorMonetario(ultimaColuna);
-                } else if (penultimaColuna && typeof penultimaColuna === 'string' && penultimaColuna.includes('R$')) {
-                    valor = extrairValorMonetario(penultimaColuna);
-                } else {
-                    valor = extrairValorMonetario(ultimaColuna);
-                }
-                
-                if (valor === 0) continue;
-                
-                // Verifica se esta linha é um título de seção
-                for (let [idx, secao] of Object.entries(secoes)) {
-                    if (parseInt(idx) === i && !secao.valorExtraido) {
-                        secao.valorExtraido = true;
-                        
-                        if (secao.tipo === "acoes") {
-                            portfolio.acoes = valor;
-                        } else if (secao.tipo === "prefixada") {
-                            portfolio.rendaFixa.prefixada = valor;
-                        } else if (secao.tipo === "posFixada") {
-                            portfolio.rendaFixa.posFixada = valor;
-                        } else if (secao.tipo === "inflacao") {
-                            portfolio.rendaFixa.inflacao = valor;
-                        } else if (secao.tipo === "fundos") {
-                            portfolio.totalFundos = valor;
-                        } else if (secao.tipo === "previdencia") {
-                            portfolio.totalPrevidencia = valor;
-                        }
-                        break;
-                    }
-                }
-                
-                // ========== PASSO 3: DENTRO DA TABELA DE FUNDOS, EXTRAIR COTAS ==========
-                if (secoes[i]?.tipo === "subfundos") {
-                    let linhaDados = i + 3;
-                    let somatorio = 0;
-                    
-                    while (json[linhaDados] && json[linhaDados][0] && !json[linhaDados][0].toString().includes('%')) {
-                        const linhaFundo = json[linhaDados];
-                        const valorFundo = extrairValorMonetario(linhaFundo[linhaFundo.length - 1]);
-                        
-                        if (valorFundo > 0 && valorFundo < 10000000) {
-                            const subTipo = secoes[i].subTipo;
-                            if (subTipo === "pos") portfolio.fundos.pos += valorFundo;
-                            else if (subTipo === "inflacao") portfolio.fundos.inflacao += valorFundo;
-                            else if (subTipo === "multimercado") portfolio.fundos.multimercado += valorFundo;
-                            else if (subTipo === "acoes") portfolio.fundos.acoes += valorFundo;
-                            else if (subTipo === "cambial") portfolio.fundos.cambial += valorFundo;
-                            somatorio += valorFundo;
-                        }
-                        linhaDados++;
-                    }
-                }
-                
-                // ========== PASSO 4: EXTRAIR FUNDOS DE PREVIDÊNCIA ==========
-                if (secoes[i]?.tipo === "previdencia") {
-                    let linhaPrev = i + 3;
-                    
-                    while (json[linhaPrev] && json[linhaPrev][0] && !json[linhaPrev][0].toString().includes('Custódia')) {
-                        const linhaFundo = json[linhaPrev];
-                        const nomeFundo = (linhaFundo[0] || "").toString().toLowerCase();
-                        const valorFundo = extrairValorMonetario(linhaFundo[linhaFundo.length - 1]);
-                        
-                        if (valorFundo > 0 && valorFundo < 10000000) {
-                            if (nomeFundo.includes("ficfia")) portfolio.previdencia.ficfia += valorFundo;
-                            else if (nomeFundo.includes("ficfim")) portfolio.previdencia.ficfim += valorFundo;
-                            else portfolio.previdencia.outros += valorFundo;
-                        }
-                        linhaPrev++;
-                    }
-                }
-            }
+            // Calcular os totais finais
+            let rendaFixaPos = totalPosFixada + totalFundosPos + totalPrevOutros;
+            let rendaFixaPre = totalPrefixada;
+            let rendaFixaInflacao = totalInflacao + totalFundosInflacao;
+            let multiestrategia = totalFundosMulti + totalPrevFicfim;
+            let rendaVariavel = totalAcoes + totalPrevFicfia;
             
-            // ========== PASSO 5: AGREGAR TOTAIS FINAIS ==========
-            let totalPos = portfolio.rendaFixa.posFixada + portfolio.fundos.pos + portfolio.previdencia.outros;
-            let totalPre = portfolio.rendaFixa.prefixada;
-            let totalInflacao = portfolio.rendaFixa.inflacao + portfolio.fundos.inflacao;
-            let totalMulti = portfolio.fundos.multimercado + portfolio.previdencia.ficfim;
-            let totalRV = portfolio.acoes + portfolio.fundos.acoes + portfolio.previdencia.ficfia;
+            let totalCalculado = rendaFixaPos + rendaFixaPre + rendaFixaInflacao + multiestrategia + rendaVariavel;
             
-            let patrimonio = totalPos + totalPre + totalInflacao + totalMulti + totalRV;
+            // Usar o maior entre totalPatrimonio e totalCalculado
+            let patrimonioFinal = totalPatrimonio > 0 ? totalPatrimonio : totalCalculado;
             
-            // Fallback: tenta pegar o "Total investido" do cabeçalho
-            for (let i = 0; i < json.length; i++) {
-                const linha = json[i];
-                if (linha && linha[0] && linha[0].toString().includes("Total investido")) {
-                    patrimonio = extrairValorMonetario(linha[1]);
-                    if (patrimonio > 0) break;
-                }
-            }
+            // Calcular percentuais
+            let pctPos = (rendaFixaPos / patrimonioFinal) * 100;
+            let pctPre = (rendaFixaPre / patrimonioFinal) * 100;
+            let pctInflacao = (rendaFixaInflacao / patrimonioFinal) * 100;
+            let pctMulti = (multiestrategia / patrimonioFinal) * 100;
+            let pctRV = (rendaVariavel / patrimonioFinal) * 100;
             
-            // Calcula percentuais
-            const pcts = {
-                pos: (totalPos / patrimonio) * 100,
-                pre: (totalPre / patrimonio) * 100,
-                inflacao: (totalInflacao / patrimonio) * 100,
-                multi: (totalMulti / patrimonio) * 100,
-                rv: (totalRV / patrimonio) * 100
-            };
-            
-            // Preenche os inputs
-            if (inputsAtuais["Renda Fixa Pós"]) inputsAtuais["Renda Fixa Pós"].value = pcts.pos.toFixed(2);
-            if (inputsAtuais["Renda Fixa Pré"]) inputsAtuais["Renda Fixa Pré"].value = pcts.pre.toFixed(2);
-            if (inputsAtuais["Renda Fixa Inflação"]) inputsAtuais["Renda Fixa Inflação"].value = pcts.inflacao.toFixed(2);
-            if (inputsAtuais["Multiestratégia"]) inputsAtuais["Multiestratégia"].value = pcts.multi.toFixed(2);
-            if (inputsAtuais["Renda Variável"]) inputsAtuais["Renda Variável"].value = pcts.rv.toFixed(2);
+            // Preencher os inputs
+            if (inputsAtuais["Renda Fixa Pós"]) inputsAtuais["Renda Fixa Pós"].value = pctPos.toFixed(2);
+            if (inputsAtuais["Renda Fixa Pré"]) inputsAtuais["Renda Fixa Pré"].value = pctPre.toFixed(2);
+            if (inputsAtuais["Renda Fixa Inflação"]) inputsAtuais["Renda Fixa Inflação"].value = pctInflacao.toFixed(2);
+            if (inputsAtuais["Multiestratégia"]) inputsAtuais["Multiestratégia"].value = pctMulti.toFixed(2);
+            if (inputsAtuais["Renda Variável"]) inputsAtuais["Renda Variável"].value = pctRV.toFixed(2);
             
             atualizarTotal();
             
-            // Exibe relatório detalhado
+            // Mostrar detalhes
             const detalhesDiv = document.getElementById("detalhesImportacao");
             detalhesDiv.innerHTML = `
-                <strong>✅ Importação inteligente concluída!</strong><br><br>
-                <strong>💰 Patrimônio total: R$ ${patrimonio.toLocaleString('pt-BR')}</strong><br><br>
+                <strong>✅ Importação concluída com sucesso!</strong><br><br>
+                <strong>💰 Patrimônio total: R$ ${patrimonioFinal.toLocaleString('pt-BR')}</strong><br><br>
                 
                 <strong>📊 Valores por classe (R$):</strong><br>
-                • Renda Fixa Pós: R$ ${totalPos.toLocaleString('pt-BR')} (${pcts.pos.toFixed(2)}%)<br>
-                • Renda Fixa Pré: R$ ${totalPre.toLocaleString('pt-BR')} (${pcts.pre.toFixed(2)}%)<br>
-                • Renda Fixa Inflação: R$ ${totalInflacao.toLocaleString('pt-BR')} (${pcts.inflacao.toFixed(2)}%)<br>
-                • Multiestratégia: R$ ${totalMulti.toLocaleString('pt-BR')} (${pcts.multi.toFixed(2)}%)<br>
-                • Renda Variável: R$ ${totalRV.toLocaleString('pt-BR')} (${pcts.rv.toFixed(2)}%)<br>
+                • Renda Fixa Pós: R$ ${rendaFixaPos.toLocaleString('pt-BR')} (${pctPos.toFixed(2)}%)<br>
+                • Renda Fixa Pré: R$ ${rendaFixaPre.toLocaleString('pt-BR')} (${pctPre.toFixed(2)}%)<br>
+                • Renda Fixa Inflação: R$ ${rendaFixaInflacao.toLocaleString('pt-BR')} (${pctInflacao.toFixed(2)}%)<br>
+                • Multiestratégia: R$ ${multiestrategia.toLocaleString('pt-BR')} (${pctMulti.toFixed(2)}%)<br>
+                • Renda Variável: R$ ${rendaVariavel.toLocaleString('pt-BR')} (${pctRV.toFixed(2)}%)<br>
                 <hr>
-                <strong>🔍 Composição detalhada:</strong><br>
-                <span style="font-size:12px">
-                • Ações diretas: R$ ${portfolio.acoes.toLocaleString('pt-BR')}<br>
-                • Renda Fixa Prefixada: R$ ${portfolio.rendaFixa.prefixada.toLocaleString('pt-BR')}<br>
-                • Renda Fixa Pós: R$ ${portfolio.rendaFixa.posFixada.toLocaleString('pt-BR')}<br>
-                • Renda Fixa Inflação: R$ ${portfolio.rendaFixa.inflacao.toLocaleString('pt-BR')}<br>
-                • Fundos Pós: R$ ${portfolio.fundos.pos.toLocaleString('pt-BR')}<br>
-                • Fundos Inflação: R$ ${portfolio.fundos.inflacao.toLocaleString('pt-BR')}<br>
-                • Fundos Multimercado: R$ ${portfolio.fundos.multimercado.toLocaleString('pt-BR')}<br>
-                • Fundos Ações: R$ ${portfolio.fundos.acoes.toLocaleString('pt-BR')}<br>
-                • Previdência FICFIA (RV): R$ ${portfolio.previdencia.ficfia.toLocaleString('pt-BR')}<br>
-                • Previdência FICFIM (Multi): R$ ${portfolio.previdencia.ficfim.toLocaleString('pt-BR')}<br>
-                • Previdência Outros: R$ ${portfolio.previdencia.outros.toLocaleString('pt-BR')}<br>
-                </span>
+                <strong>🔍 Valores brutos extraídos:</strong><br>
+                • Ações diretas: R$ ${totalAcoes.toLocaleString('pt-BR')}<br>
+                • Prefixada: R$ ${totalPrefixada.toLocaleString('pt-BR')}<br>
+                • Pós-Fixada: R$ ${totalPosFixada.toLocaleString('pt-BR')}<br>
+                • Inflação: R$ ${totalInflacao.toLocaleString('pt-BR')}<br>
+                • Fundos (total): R$ ${totalFundos.toLocaleString('pt-BR')}<br>
+                • Fundos Pós: R$ ${totalFundosPos.toLocaleString('pt-BR')}<br>
+                • Fundos Inflação: R$ ${totalFundosInflacao.toLocaleString('pt-BR')}<br>
+                • Fundos Multi: R$ ${totalFundosMulti.toLocaleString('pt-BR')}<br>
+                • Previdência (total): R$ ${totalPrevidencia.toLocaleString('pt-BR')}<br>
+                • Prev FICFIA (RV): R$ ${totalPrevFicfia.toLocaleString('pt-BR')}<br>
+                • Prev FICFIM (Multi): R$ ${totalPrevFicfim.toLocaleString('pt-BR')}<br>
+                • Prev Outros (Pós): R$ ${totalPrevOutros.toLocaleString('pt-BR')}<br>
             `;
             detalhesDiv.classList.add("show");
             
-            alert(`✅ Importação concluída!\n\nPatrimônio: R$ ${patrimonio.toLocaleString('pt-BR')}\n\nPós: ${pcts.pos.toFixed(1)}%\nPré: ${pcts.pre.toFixed(1)}%\nInflação: ${pcts.inflacao.toFixed(1)}%\nMulti: ${pcts.multi.toFixed(1)}%\nRV: ${pcts.rv.toFixed(1)}%`);
+            alert(`✅ Importação concluída!\n\nPatrimônio: R$ ${patrimonioFinal.toLocaleString('pt-BR')}\n\nPós: ${pctPos.toFixed(1)}%\nPré: ${pctPre.toFixed(1)}%\nInflação: ${pctInflacao.toFixed(1)}%\nMulti: ${pctMulti.toFixed(1)}%\nRV: ${pctRV.toFixed(1)}%`);
         };
         reader.readAsArrayBuffer(file);
     }
@@ -387,9 +357,16 @@
     function renderRecomendada() {
         const container = document.getElementById("recomendada-tabela");
         const rec = carteiraRecomendada[perfilAtual];
-        let html = `<table style="width:100%"><thead><tr><th>Classe</th><th>% Alvo</th></tr></thead><tbody>`;
-        classes.forEach(c => { html += `<tr><td>${c}</td><td style="text-align:center">${rec[c].toFixed(1)}%</td></tr>`; });
-        html += `</tbody></table><div style="margin-top:12px; background:#e6f7ff; padding:8px; border-radius:12px;">🎯 Perfil ${perfilAtual}</div>`;
+        let html = `<table style="width:100%; border-collapse: collapse;">`;
+        html += `<thead><tr style="border-bottom: 2px solid #cbd5e1;"><th style="text-align:left; padding:8px;">Classe</th><th style="text-align:center; padding:8px;">% Alvo</th></tr></thead><tbody>`;
+        classes.forEach(c => { 
+            html += `<tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding:8px;">${c}</td>
+                        <td style="text-align:center; padding:8px;">${rec[c].toFixed(1)}%</td>
+                     </tr>`; 
+        });
+        html += `</tbody></table>`;
+        html += `<div style="margin-top:12px; background:#e6f7ff; padding:8px; border-radius:12px; text-align:center;">🎯 Perfil ${perfilAtual}</div>`;
         container.innerHTML = html;
     }
     
@@ -431,7 +408,7 @@
         document.getElementById("btnProcessarExcel").onclick = () => {
             const file = document.getElementById("fileExcel").files[0];
             if (!file) { alert("Selecione um arquivo"); return; }
-            processarExcelXPInteligente(file);
+            processarExcelXP(file);
         };
         document.querySelectorAll(".perfil-btn").forEach(btn => {
             btn.onclick = () => setPerfil(btn.getAttribute("data-perfil"));
