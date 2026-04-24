@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Rebalanceador de Carteira - Classificação Inteligente</title>
+    <title>Rebalanceador de Carteira - Leitura por Seções</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
         body { background: linear-gradient(135deg, #0b2b3b 0%, #1a4a5f 100%); margin: 0; padding: 20px; min-height: 100vh; }
@@ -36,9 +36,9 @@
         .retirar { background: #ffedd5; color: #9a3412; }
         .legenda { display: flex; gap: 20px; justify-content: center; margin-top: 15px; flex-wrap: wrap; }
         .footer { text-align: center; color: #cbd5e1; font-size: 13px; margin-top: 20px; }
-        .detalhes-importacao { background: #e0f2fe; padding: 12px; border-radius: 12px; margin-top: 15px; font-size: 13px; display: none; }
+        .detalhes-importacao { background: #e0f2fe; padding: 12px; border-radius: 12px; margin-top: 15px; font-size: 13px; max-height: 300px; overflow-y: auto; display: none; }
         .detalhes-importacao.show { display: block; }
-        .classificacao-detalhe { font-size: 11px; color: #555; margin-top: 5px; }
+        .secao-header { background: #cbd5e1; padding: 4px 8px; margin-top: 8px; font-weight: bold; }
     </style>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 </head>
@@ -46,16 +46,17 @@
 <div class="container">
     <div class="card">
         <h1>📊 Rebalanceador de Carteira</h1>
-        <div class="sub">Classifica automaticamente: Ações, Fundos (FIA/FIM/FIRF), Previdência (PGBL/VGBL)</div>
+        <div class="sub">Leitura por seções: identifica cabeçalhos e soma automaticamente</div>
         
         <div class="upload-area">
-            <h3>📎 Upload da planilha do cliente (formato XP, BTG, Rico ou planilha própria)</h3>
+            <h3>📎 Upload da planilha do cliente</h3>
             <div class="file-input-wrapper">
-                <input type="file" id="fileExcel" accept=".xlsx, .xls, .csv" />
+                <input type="file" id="fileExcel" accept=".xlsx, .xls" />
                 <button class="btn-excel" id="btnProcessarExcel">📂 Importar e classificar</button>
             </div>
             <div style="font-size:12px; margin-top:10px;">
-                ✅ Reconhece: Ações, FIA, FIM, FIRF (Pós/Pré/IPCA), Previdência, Fundos Globais
+                ✅ Reconhece seções: "Ações", "Fundos de Renda Fixa Pós-Fixado", "Fundos de Inflação", "Previdência"<br>
+                ✅ Soma automaticamente todos os valores dentro de cada seção
             </div>
             <div id="detalhesImportacao" class="detalhes-importacao"></div>
         </div>
@@ -90,7 +91,7 @@
             </div>
         </div>
     </div>
-    <div class="footer">📌 Classificação inteligente: soma automática de todos os ativos da mesma classe (ex: todos prefixados → Renda Fixa Pré)</div>
+    <div class="footer">📌 O script identifica cabeçalhos de seção (ex: "Fundos de Renda Fixa Pós-Fixado") e soma todos os valores abaixo até a próxima seção</div>
 </div>
 
 <script>
@@ -106,84 +107,69 @@
     let perfilAtual = "Moderado";
     let inputsAtuais = {};
     
-    // ======================== CLASSIFICAÇÃO INTELIGENTE ========================
-    // Regras baseadas nas siglas e palavras-chave
-    function classificarAtivo(nome, valor, secao) {
+    // ======================== Mapeamento de Seções para Classes ========================
+    const secaoParaClasse = {
+        // Ações
+        "ações": "Renda Variável",
+        "acoes": "Renda Variável",
+        "aÇÕes": "Renda Variável",
+        
+        // Renda Fixa Pós
+        "renda fixa pós": "Renda Fixa Pós",
+        "pós-fixado": "Renda Fixa Pós",
+        "pos fixado": "Renda Fixa Pós",
+        "pós fixado": "Renda Fixa Pós",
+        "cdi": "Renda Fixa Pós",
+        "selic": "Renda Fixa Pós",
+        
+        // Renda Fixa Pré
+        "renda fixa pré": "Renda Fixa Pré",
+        "prefixado": "Renda Fixa Pré",
+        "prÉ-fixado": "Renda Fixa Pré",
+        
+        // Renda Fixa Inflação
+        "renda fixa inflação": "Renda Fixa Inflação",
+        "inflaÇÃo": "Renda Fixa Inflação",
+        "ipca": "Renda Fixa Inflação",
+        "ntn-b": "Renda Fixa Inflação",
+        
+        // Multimercado
+        "multimercado": "Multiestratégia",
+        "multi mercado": "Multiestratégia",
+        "macro": "Multiestratégia",
+        
+        // Fundos Globais
+        "global": "Renda Variável Global",
+        "internacional": "Renda Variável Global",
+        "dólar": "Renda Variável Global",
+        "dolar": "Renda Variável Global",
+        
+        // Alternativos
+        "alternativo": "Alternativo",
+        "imobiliário": "Alternativo",
+        "fii": "Alternativo",
+        
+        // Previdência (será classificado separadamente)
+        "previdência": "PREVIDENCIA",
+        "pgbl": "PREVIDENCIA",
+        "vgbl": "PREVIDENCIA"
+    };
+    
+    // Classifica um fundo de previdência baseado no nome
+    function classificarPrevidencia(nome) {
         const nomeLower = nome.toLowerCase();
-        
-        // 1. PREVIDÊNCIA (PGBL/VGBL) - precisa ver o fundo subjacente
-        if (nomeLower.includes("prev") || nomeLower.includes("pgbl") || nomeLower.includes("vgbl") || secao === "PREVIDENCIA") {
-            // Verifica o tipo do fundo de previdência pelo nome
-            if (nomeLower.includes("fia") || nomeLower.includes("ações") || nomeLower.includes("acoes")) {
-                return { classe: "Renda Variável", detalhe: "Previdência Ações" };
-            }
-            if (nomeLower.includes("fim") || nomeLower.includes("multimercado")) {
-                return { classe: "Multiestratégia", detalhe: "Previdência Multimercado" };
-            }
-            if (nomeLower.includes("ipca") || nomeLower.includes("inflação")) {
-                return { classe: "Renda Fixa Inflação", detalhe: "Previdência Inflação" };
-            }
-            if (nomeLower.includes("prefixado") || nomeLower.includes("pré")) {
-                return { classe: "Renda Fixa Pré", detalhe: "Previdência Prefixado" };
-            }
-            // Default: previdência como Renda Fixa Pós (mais comum)
-            return { classe: "Renda Fixa Pós", detalhe: "Previdência Pós-fixada" };
-        }
-        
-        // 2. FUNDOS DE AÇÕES (FIA)
-        if (nomeLower.includes("fia") || (nomeLower.includes("fundo") && nomeLower.includes("ação"))) {
-            return { classe: "Renda Variável", detalhe: "FIA - Fundo de Ações" };
-        }
-        
-        // 3. FUNDOS MULTIMERCADO (FIM)
-        if (nomeLower.includes("fim") || nomeLower.includes("multimercado") || nomeLower.includes("multi mercado")) {
-            return { classe: "Multiestratégia", detalhe: "FIM - Multimercado" };
-        }
-        
-        // 4. FUNDOS DE RENDA FIXA (FIRF)
-        if (nomeLower.includes("firf") || (nomeLower.includes("fundo") && nomeLower.includes("renda fixa"))) {
-            // Renda Fixa Pós (CDI, Selic)
-            if (nomeLower.includes("pós") || nomeLower.includes("pos") || nomeLower.includes("cdi") || nomeLower.includes("selic")) {
-                return { classe: "Renda Fixa Pós", detalhe: "FIRF Pós-fixado" };
-            }
-            // Renda Fixa Pré (prefixado)
-            if (nomeLower.includes("pré") || nomeLower.includes("pre") || nomeLower.includes("prefixado")) {
-                return { classe: "Renda Fixa Pré", detalhe: "FIRF Prefixado" };
-            }
-            // Renda Fixa Inflação (IPCA)
-            if (nomeLower.includes("ipca") || nomeLower.includes("inflação") || nomeLower.includes("inflacao")) {
-                return { classe: "Renda Fixa Inflação", detalhe: "FIRF Inflação" };
-            }
-            return { classe: "Renda Fixa Pós", detalhe: "FIRF (padrão Pós)" };
-        }
-        
-        // 5. FUNDOS GLOBAIS / INTERNACIONAIS
-        if (nomeLower.includes("global") || nomeLower.includes("internacional") || nomeLower.includes("dólar") || nomeLower.includes("dolar") || nomeLower.includes("nasdaq") || nomeLower.includes("s&p")) {
-            if (nomeLower.includes("fixa") || nomeLower.includes("bonds")) {
-                return { classe: "Renda Fixa Global", detalhe: "Renda Fixa Global" };
-            }
-            return { classe: "Renda Variável Global", detalhe: "Renda Variável Global" };
-        }
-        
-        // 6. AÇÕES INDIVIDUAIS (códigos de 4-5 letras + número como PETR4, VALE3)
-        const codigoAcao = /^[A-Z]{4}\d{1,2}$/i;
-        if (codigoAcao.test(nome.trim()) || nomeLower.includes("ação") || nomeLower.includes("acao") || secao === "ACOES") {
-            return { classe: "Renda Variável", detalhe: "Ação" };
-        }
-        
-        // 7. FUNDOS IMOBILIÁRIOS (FII)
-        if (nomeLower.includes("fii") || nomeLower.includes("imobiliário") || nomeLower.includes("imobiliario")) {
-            return { classe: "Alternativo", detalhe: "FII - Fundo Imobiliário" };
-        }
-        
-        // 8. Default: se não identificar, joga em Renda Variável
-        return { classe: "Renda Variável", detalhe: "Não classificado (default)" };
+        if (nomeLower.includes("fia") || nomeLower.includes("ações")) return "Renda Variável";
+        if (nomeLower.includes("fim") || nomeLower.includes("multimercado")) return "Multiestratégia";
+        if (nomeLower.includes("ipca") || nomeLower.includes("inflação")) return "Renda Fixa Inflação";
+        if (nomeLower.includes("prefixado") || nomeLower.includes("pré")) return "Renda Fixa Pré";
+        return "Renda Fixa Pós"; // padrão
     }
     
-    // ======================== PROCESSAR EXCEL ========================
-    let classificacoesDetalhadas = [];
+    // ======================== LEITURA POR SEÇÕES ========================
+    let somaPorClasseGlobal = {};
+    let detalhesImportacao = [];
     
-    function processarExcel(file) {
+    function processarExcelPorSecoes(file) {
         const reader = new FileReader();
         reader.onload = function(e) {
             const data = new Uint8Array(e.target.result);
@@ -193,125 +179,153 @@
             
             if (!json || json.length < 2) { alert("Arquivo vazio ou inválido."); return; }
             
-            // Variáveis para somar por classe
-            let somaPorClasse = {};
-            classes.forEach(c => somaPorClasse[c] = 0);
-            let totalPatrimonio = 0;
-            classificacoesDetalhadas = [];
+            // Inicializa somadores
+            classes.forEach(classe => somaPorClasseGlobal[classe] = 0);
+            detalhesImportacao = [];
             
             let secaoAtual = "";
-            let ativosEncontrados = [];
+            let montanteSecao = 0;
+            let totalPatrimonio = 0;
             
-            // Primeiro, identifica as seções do Excel
+            // Percorre linha por linha
             for (let i = 0; i < json.length; i++) {
                 const linha = json[i];
                 if (!linha || linha.length === 0) continue;
                 
-                const textoLinha = linha.join(" ").toLowerCase();
+                // Pega a primeira célula da linha (onde geralmente está o título da seção)
+                let primeiraCelula = (linha[0] || "").toString().trim();
+                let segundaCelula = (linha[1] || "").toString().trim();
+                let textoCompleto = linha.join(" ").toLowerCase();
                 
-                if (textoLinha.includes("ações") && (textoLinha.includes("%") || textoLinha.includes("ação"))) {
-                    secaoAtual = "ACOES";
+                // 🔍 IDENTIFICA SEÇÃO (cabeçalho)
+                let novaSecao = null;
+                
+                // Verifica se é uma seção de Ações
+                if (textoCompleto.includes("ações") && (textoCompleto.includes("%") || textoCompleto.includes("aÇ"))) {
+                    novaSecao = "Renda Variável";
+                }
+                // Verifica se é uma seção de Fundos de Renda Fixa Pós
+                else if (textoCompleto.includes("fundos de renda fixa pós") || textoCompleto.includes("pós-fixado")) {
+                    novaSecao = "Renda Fixa Pós";
+                }
+                // Verifica se é uma seção de Fundos Prefixados
+                else if (textoCompleto.includes("fundos de renda fixa pré") || textoCompleto.includes("prefixado")) {
+                    novaSecao = "Renda Fixa Pré";
+                }
+                // Verifica se é uma seção de Fundos de Inflação
+                else if (textoCompleto.includes("fundos de inflação") || textoCompleto.includes("fundos ipca") || textoCompleto.includes("inflaÇÃo")) {
+                    novaSecao = "Renda Fixa Inflação";
+                }
+                // Verifica se é uma seção de Fundos Multimercado
+                else if (textoCompleto.includes("multimercado") || textoCompleto.includes("macro")) {
+                    novaSecao = "Multiestratégia";
+                }
+                // Verifica se é uma seção de Fundos Globais
+                else if (textoCompleto.includes("global") || textoCompleto.includes("internacional")) {
+                    novaSecao = "Renda Variável Global";
+                }
+                // Verifica se é uma seção de Previdência
+                else if (textoCompleto.includes("previdência") || textoCompleto.includes("previdenci")) {
+                    novaSecao = "PREVIDENCIA";
+                }
+                // Verifica se é uma seção de Alternativos
+                else if (textoCompleto.includes("alternativo") || textoCompleto.includes("fii") || textoCompleto.includes("imobiliário")) {
+                    novaSecao = "Alternativo";
+                }
+                
+                // Se encontrou uma nova seção, finaliza a anterior e começa nova
+                if (novaSecao !== null) {
+                    secaoAtual = novaSecao;
+                    montanteSecao = 0;
                     continue;
                 }
-                if (textoLinha.includes("fundos de investimento") || textoLinha.includes("fundos")) {
-                    secaoAtual = "FUNDOS";
-                    continue;
-                }
-                if (textoLinha.includes("previdência") || textoLinha.includes("previdencia") || textoLinha.includes("pgbl") || textoLinha.includes("vgbl")) {
-                    secaoAtual = "PREVIDENCIA";
-                    continue;
-                }
                 
-                // Procura por linhas com nome de ativo e valor
-                let nomeAtivo = "";
-                let valor = 0;
-                
-                for (let j = 0; j < Math.min(linha.length, 15); j++) {
-                    const cell = linha[j];
-                    if (!cell || cell === "") continue;
+                // DENTRO DE UMA SEÇÃO: procura por valores monetários
+                if (secaoAtual !== "") {
+                    let valorEncontrado = 0;
                     
-                    // Identifica nome (texto com mais de 2 caracteres, sem símbolos monetários)
-                    if (typeof cell === 'string' && cell.length > 2 && !cell.includes('R$') && !cell.includes('%') && !cell.includes('Data')) {
-                        if (nomeAtivo === "") nomeAtivo = cell;
-                    }
-                    
-                    // Extrai valor monetário
-                    let valorNum = 0;
-                    if (typeof cell === 'number' && cell > 0 && cell < 1000000000) {
-                        valorNum = cell;
-                    } else if (typeof cell === 'string') {
-                        const match = cell.match(/R?\$?\s*([\d\.\,]+)/);
-                        if (match) {
-                            valorNum = parseFloat(match[1].replace(/\./g, '').replace(',', '.'));
-                        }
-                    }
-                    
-                    if (valorNum > 0 && valorNum < 1000000000) {
-                        valor = valorNum;
-                    }
-                }
-                
-                if (nomeAtivo && valor > 0 && !nomeAtivo.includes("Total") && !nomeAtivo.includes("Saldo")) {
-                    ativosEncontrados.push({ nome: nomeAtivo, valor: valor, secao: secaoAtual });
-                }
-            }
-            
-            // Se não encontrou pela busca por seções, tenta método alternativo (linha por linha)
-            if (ativosEncontrados.length === 0) {
-                for (let i = 1; i < json.length; i++) {
-                    const linha = json[i];
-                    if (!linha || linha.length === 0) continue;
-                    
-                    let nomeAtivo = "";
-                    let valor = 0;
-                    
-                    for (let j = 0; j < Math.min(linha.length, 10); j++) {
+                    // Procura em todas as células da linha
+                    for (let j = 0; j < Math.min(linha.length, 20); j++) {
                         const cell = linha[j];
                         if (!cell) continue;
                         
-                        if (typeof cell === 'string' && cell.length > 2 && cell.length < 30 && !cell.includes('R$') && !cell.includes('%')) {
-                            nomeAtivo = cell;
-                        }
+                        // Extrai valor numérico
+                        let valor = 0;
                         if (typeof cell === 'number' && cell > 0 && cell < 1000000000) {
                             valor = cell;
-                        }
-                        if (typeof cell === 'string') {
+                        } else if (typeof cell === 'string') {
+                            // Remove R$ e converte
                             const match = cell.match(/R?\$?\s*([\d\.\,]+)/);
-                            if (match && !nomeAtivo) {
+                            if (match) {
                                 valor = parseFloat(match[1].replace(/\./g, '').replace(',', '.'));
                             }
                         }
+                        
+                        if (valor > 0 && valor < 1000000000) {
+                            valorEncontrado = valor;
+                            break;
+                        }
                     }
                     
-                    if (nomeAtivo && valor > 0 && !nomeAtivo.includes("Total")) {
-                        ativosEncontrados.push({ nome: nomeAtivo, valor: valor, secao: "" });
+                    // Se encontrou um valor, adiciona ao montante da seção
+                    if (valorEncontrado > 0) {
+                        montanteSecao += valorEncontrado;
+                        
+                        // Registra detalhe
+                        let nomeAtivo = "";
+                        for (let j = 0; j < Math.min(linha.length, 5); j++) {
+                            const cell = linha[j];
+                            if (cell && typeof cell === 'string' && cell.length > 2 && !cell.includes('R$') && !cell.includes('%')) {
+                                nomeAtivo = cell;
+                                break;
+                            }
+                        }
+                        
+                        detalhesImportacao.push({
+                            secao: secaoAtual,
+                            nome: nomeAtivo || "Ativo",
+                            valor: valorEncontrado
+                        });
                     }
+                }
+                
+                // Se mudou de seção (linha em branco ou próximo cabeçalho), finaliza a seção atual
+                if ((primeiraCelula === "" || primeiraCelula.length < 3) && montanteSecao > 0 && secaoAtual !== "") {
+                    // Se for previdência, classifica baseado no nome dos ativos da seção
+                    if (secaoAtual === "PREVIDENCIA") {
+                        // Pega o primeiro ativo da seção para decidir a classificação
+                        let primeiraPrevidencia = detalhesImportacao.filter(d => d.secao === "PREVIDENCIA").pop();
+                        let classePrevidencia = classificarPrevidencia(primeiraPrevidencia?.nome || "");
+                        somaPorClasseGlobal[classePrevidencia] += montanteSecao;
+                        totalPatrimonio += montanteSecao;
+                    } else if (classes.includes(secaoAtual)) {
+                        somaPorClasseGlobal[secaoAtual] += montanteSecao;
+                        totalPatrimonio += montanteSecao;
+                    }
+                    montanteSecao = 0;
                 }
             }
             
-            if (ativosEncontrados.length === 0) {
-                alert("Nenhum ativo encontrado. Verifique o formato do arquivo.");
+            // Última seção
+            if (montanteSecao > 0 && secaoAtual !== "") {
+                if (secaoAtual === "PREVIDENCIA") {
+                    let classePrevidencia = classificarPrevidencia(""); // fallback
+                    somaPorClasseGlobal[classePrevidencia] += montanteSecao;
+                } else if (classes.includes(secaoAtual)) {
+                    somaPorClasseGlobal[secaoAtual] += montanteSecao;
+                }
+                totalPatrimonio += montanteSecao;
+            }
+            
+            // Se não encontrou nada, tenta método alternativo (busca direta de valores)
+            if (totalPatrimonio === 0) {
+                alert("Não foi possível identificar seções ou valores. Verifique o formato do arquivo.");
                 return;
             }
             
-            // Classifica cada ativo e soma
-            ativosEncontrados.forEach(ativo => {
-                const classificacao = classificarAtivo(ativo.nome, ativo.valor, ativo.secao);
-                somaPorClasse[classificacao.classe] += ativo.valor;
-                totalPatrimonio += ativo.valor;
-                classificacoesDetalhadas.push({
-                    nome: ativo.nome,
-                    valor: ativo.valor,
-                    classe: classificacao.classe,
-                    detalhe: classificacao.detalhe
-                });
-            });
-            
-            if (totalPatrimonio === 0) { alert("Patrimônio total não identificado."); return; }
-            
-            // Preenche os inputs com os percentuais
+            // Preenche os inputs
             classes.forEach(classe => {
-                const pct = (somaPorClasse[classe] / totalPatrimonio) * 100;
+                const pct = (somaPorClasseGlobal[classe] / totalPatrimonio) * 100;
                 if (inputsAtuais[classe]) {
                     inputsAtuais[classe].value = pct.toFixed(2);
                 }
@@ -319,29 +333,34 @@
             
             atualizarTotal();
             
-            // Exibe detalhes da classificação
+            // Exibe detalhes da importação
             const detalhesDiv = document.getElementById("detalhesImportacao");
             let detalhesHtml = `<strong>✅ Importação concluída!</strong><br>
-                📊 Ativos identificados: ${ativosEncontrados.length}<br>
-                💰 Patrimônio total: R$ ${totalPatrimonio.toLocaleString('pt-BR')}<br><br>
-                <strong>📋 Classificação por classe:</strong><br>`;
+                💰 Patrimônio total: R$ ${totalPatrimonio.toLocaleString('pt-BR')}<br>
+                📊 Ativos identificados: ${detalhesImportacao.length}<br><br>
+                <strong>📋 Soma por classe:</strong><br>`;
             
-            for (let [classe, valor] of Object.entries(somaPorClasse)) {
+            for (let [classe, valor] of Object.entries(somaPorClasseGlobal)) {
                 if (valor > 0) {
                     const pct = (valor / totalPatrimonio) * 100;
-                    detalhesHtml += `${classe}: R$ ${valor.toLocaleString('pt-BR')} (${pct.toFixed(1)}%)<br>`;
+                    detalhesHtml += `<span style="display:block;">${classe}: R$ ${valor.toLocaleString('pt-BR')} <strong>(${pct.toFixed(1)}%)</strong></span>`;
                 }
             }
             
-            detalhesHtml += `<br><strong>🔍 Detalhamento dos ativos:</strong><br>`;
-            classificacoesDetalhadas.forEach(item => {
-                detalhesHtml += `<span style="font-size:11px;">• ${item.nome}: R$ ${item.valor.toLocaleString('pt-BR')} → ${item.classe} (${item.detalhe})</span><br>`;
+            detalhesHtml += `<br><strong>🔍 Detalhamento por seção:</strong><br>`;
+            let ultimaSecao = "";
+            detalhesImportacao.forEach(item => {
+                if (item.secao !== ultimaSecao) {
+                    detalhesHtml += `<div class="secao-header">📁 ${item.secao}</div>`;
+                    ultimaSecao = item.secao;
+                }
+                detalhesHtml += `<span style="font-size:11px;">• ${item.nome}: R$ ${item.valor.toLocaleString('pt-BR')}</span><br>`;
             });
             
             detalhesDiv.innerHTML = detalhesHtml;
             detalhesDiv.classList.add("show");
             
-            alert(`✅ Importado! ${ativosEncontrados.length} ativos identificados.\nPatrimônio: R$ ${totalPatrimonio.toLocaleString('pt-BR')}`);
+            alert(`✅ Importado! Patrimônio total: R$ ${totalPatrimonio.toLocaleString('pt-BR')}\nAcesse os detalhes abaixo.`);
         };
         reader.readAsArrayBuffer(file);
     }
@@ -389,7 +408,7 @@
         const container = document.getElementById("recomendada-tabela");
         const rec = carteiraRecomendada[perfilAtual];
         let html = `<table style="width:100%"><thead><tr><th>Classe</th><th>% Alvo</th></tr></thead><tbody>`;
-        classes.forEach(c => { html += `<tr><td>${c}</td><td style="text-align:center">${rec[c].toFixed(1)}%</td></tr>`; });
+        classes.forEach(c => { html += `<tr><td>${c}</td><td style="text-align:center">${rec[c].toFixed(1)}%</td></table>`; });
         html += `</tbody></table><div style="margin-top:12px; background:#e6f7ff; padding:8px; border-radius:12px;">🎯 Perfil ${perfilAtual}</div>`;
         container.innerHTML = html;
     }
@@ -432,7 +451,7 @@
         document.getElementById("btnProcessarExcel").onclick = () => {
             const file = document.getElementById("fileExcel").files[0];
             if (!file) { alert("Selecione um arquivo"); return; }
-            processarExcel(file);
+            processarExcelPorSecoes(file);
         };
         document.querySelectorAll(".perfil-btn").forEach(btn => {
             btn.onclick = () => setPerfil(btn.getAttribute("data-perfil"));
