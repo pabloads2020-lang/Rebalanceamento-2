@@ -652,8 +652,6 @@ async function extrairDadosPDF(file) {
     log('Pg' + p + ': ' + toks.slice(0,12).join(' | '));
   }
 
-  const txt = todosTokens.join(' ');
-
   const estrategias = {
     "Pós Fixado":     {pct: null, valor: null},
     "Pré Fixado":     {pct: null, valor: null},
@@ -663,77 +661,76 @@ async function extrairDadosPDF(file) {
     "Alternativo":    {pct: null, valor: null}
   };
 
-  // ── Estratégia 1: regex no texto concatenado ──
-  const padroes = [
-    {key:"Pós Fixado",     re:/P[oó]s\s*Fixado\s*\((\d{1,3},\d{2})%\)\s*R\$\s*([\d.]+,\d{2})/i},
-    {key:"Pré Fixado",     re:/Pr[eé]\s*Fixado\s*\((\d{1,3},\d{2})%\)\s*R\$\s*([\d.]+,\d{2})/i},
-    {key:"Inflação",       re:/Infla[cç][aã]o\s*\((\d{1,3},\d{2})%\)\s*R\$\s*([\d.]+,\d{2})/i},
-    {key:"Multimercado",   re:/Multimercado\s*\((\d{1,3},\d{2})%\)\s*R\$\s*([\d.]+,\d{2})/i},
-    {key:"Renda Variável", re:/Renda\s*Vari[aá]vel\s*Brasil\s*\((\d{1,3},\d{2})%\)\s*R\$\s*([\d.]+,\d{2})/i},
-    {key:"Alternativo",    re:/Alternativo\s*\((\d{1,3},\d{2})%\)\s*R\$\s*([\d.]+,\d{2})/i}
-  ];
+  // ── Varredura token a token (padrão exato do pdf.js com PDFs da XP) ──
+  // Sequência real: ['Pós','Fixado','(42,61%)','R$','1.242.086,14']
+  //                 ['Renda','Variável','Brasil','(6,94%)','R$','202.213,96']
+  // A função detecta o nome, pula os tokens do nome, lê (XX,XX%), pula 'R$', lê o valor.
 
-  for (const p of padroes) {
-    const m = txt.match(p.re);
-    if (m) {
-      estrategias[p.key].pct   = parseFloat(m[1].replace(',','.'));
-      estrategias[p.key].valor = numBR(m[2]);
-      log('[P1] ' + p.key + ': ' + m[1] + '% — R$ ' + m[2]);
-    }
+  function isPct(tok) {
+    return /^\(?\d{1,3},\d{2}%\)?$/.test(tok);
+  }
+  function isValor(tok) {
+    return /^\d{1,3}(\.\d{3})*,\d{2}$/.test(tok);
+  }
+  function parsePct(tok) {
+    return parseFloat(tok.replace(/[()%]/g,'').replace(',','.'));
   }
 
-  // ── Estratégia 2: varredura token a token ──
-  const achouAlgo = Object.values(estrategias).some(e => e.pct !== null);
-  if (!achouAlgo) {
-    log('Padrão 1 sem resultado — varredura token...');
-    const mapeamento = [
-      {key:"Pós Fixado",     check: (t,n) => (t==='Pós'||t==='Pos') && (n||'').startsWith('Fix')},
-      {key:"Pré Fixado",     check: (t,n) => (t==='Pré'||t==='Pre') && (n||'').startsWith('Fix')},
-      {key:"Inflação",       check: (t)   => /^infla/i.test(t)},
-      {key:"Multimercado",   check: (t)   => /^multimercado$/i.test(t)},
-      {key:"Renda Variável", check: (t,n) => t==='Renda' && (n||'').startsWith('Vari')},
-      {key:"Alternativo",    check: (t)   => /^alternativo$/i.test(t)}
-    ];
+  for (let i = 0; i < todosTokens.length; i++) {
+    const t  = todosTokens[i];
+    const t1 = todosTokens[i+1] || '';
+    const t2 = todosTokens[i+2] || '';
+    const t3 = todosTokens[i+3] || '';
+    const t4 = todosTokens[i+4] || '';
 
-    for (let i = 0; i < todosTokens.length; i++) {
-      const tok  = todosTokens[i];
-      const prox = todosTokens[i+1] || '';
-
-      for (const mp of mapeamento) {
-        if (!estrategias[mp.key].pct && mp.check(tok, prox)) {
-          // Procura percentual nos próximos 15 tokens
-          for (let j = i+1; j < Math.min(i+16, todosTokens.length); j++) {
-            const t   = todosTokens[j];
-            const mP  = t.match(/\(?(\d{1,3},\d{2})%\)?/);
-            if (mP) {
-              estrategias[mp.key].pct = parseFloat(mP[1].replace(',','.'));
-              log('[P2] ' + mp.key + ': ' + estrategias[mp.key].pct + '%');
-              // Procura valor R$ nos próximos 5 tokens
-              for (let k = j+1; k < Math.min(j+6, todosTokens.length); k++) {
-                const tv = todosTokens[k];
-                if (/^[\d.]+,\d{2}$/.test(tv)) {
-                  estrategias[mp.key].valor = numBR(tv);
-                  log('[P2] ' + mp.key + ': R$ ' + tv);
-                  break;
-                }
-              }
-              break;
-            }
-          }
-        }
-      }
+    // Pós Fixado: ['Pós','Fixado','(42,61%)','R$','1.242.086,14']
+    if ((t==='Pós'||t==='Pos') && t1==='Fixado' && isPct(t2) && !estrategias["Pós Fixado"].pct) {
+      estrategias["Pós Fixado"].pct   = parsePct(t2);
+      estrategias["Pós Fixado"].valor = isValor(t4) ? numBR(t4) : null;
+      log('[OK] Pós Fixado: ' + t2 + ' / R$ ' + t4);
+    }
+    // Pré Fixado: ['Pré','Fixado','(23,38%)','R$','681.518,75']
+    else if ((t==='Pré'||t==='Pre') && t1==='Fixado' && isPct(t2) && !estrategias["Pré Fixado"].pct) {
+      estrategias["Pré Fixado"].pct   = parsePct(t2);
+      estrategias["Pré Fixado"].valor = isValor(t4) ? numBR(t4) : null;
+      log('[OK] Pré Fixado: ' + t2 + ' / R$ ' + t4);
+    }
+    // Inflação: ['Inflação','(20,90%)','R$','609.356,52']
+    else if (/^infla/i.test(t) && isPct(t1) && !estrategias["Inflação"].pct) {
+      estrategias["Inflação"].pct   = parsePct(t1);
+      estrategias["Inflação"].valor = isValor(t3) ? numBR(t3) : null;
+      log('[OK] Inflação: ' + t1 + ' / R$ ' + t3);
+    }
+    // Multimercado: ['Multimercado','(4,81%)','R$','140.250,00']
+    else if (/^multimercado$/i.test(t) && isPct(t1) && !estrategias["Multimercado"].pct) {
+      estrategias["Multimercado"].pct   = parsePct(t1);
+      estrategias["Multimercado"].valor = isValor(t3) ? numBR(t3) : null;
+      log('[OK] Multimercado: ' + t1 + ' / R$ ' + t3);
+    }
+    // Renda Variável Brasil: ['Renda','Variável','Brasil','(6,94%)','R$','202.213,96']
+    else if (t==='Renda' && /^vari/i.test(t1) && t2==='Brasil' && isPct(t3) && !estrategias["Renda Variável"].pct) {
+      estrategias["Renda Variável"].pct   = parsePct(t3);
+      estrategias["Renda Variável"].valor = isValor(todosTokens[i+5]||'') ? numBR(todosTokens[i+5]) : null;
+      log('[OK] Renda Variável: ' + t3 + ' / R$ ' + todosTokens[i+5]);
+    }
+    // Alternativo: ['Alternativo','(1,36%)','R$','39.622,80']
+    else if (/^alternativo$/i.test(t) && isPct(t1) && !estrategias["Alternativo"].pct) {
+      estrategias["Alternativo"].pct   = parsePct(t1);
+      estrategias["Alternativo"].valor = isValor(t3) ? numBR(t3) : null;
+      log('[OK] Alternativo: ' + t1 + ' / R$ ' + t3);
     }
   }
 
   // ── Patrimônio total ──
   let patrimonioTotal = 0;
-  const mPatr = txt.match(/PATRIM[OÔ]NIO\s*TOTAL\s*BRUTO[:\s]*R\$\s*([\d.]+,\d{2})/i);
+  const txt    = todosTokens.join(' ');
+  const mPatr  = txt.match(/PATRIM[OÔ]NIO\s*TOTAL\s*BRUTO[:\s]*R\$\s*([\d.]+,\d{2})/i);
   if (mPatr) {
     patrimonioTotal = numBR(mPatr[1]);
     log('[Patrimônio] R$ ' + mPatr[1]);
   }
 
-  // Alternativo → soma em Multimercado
+  // ── Alternativo → soma em Multimercado ──
   if (estrategias["Alternativo"].valor) {
     estrategias["Multimercado"].valor =
       (estrategias["Multimercado"].valor || 0) + estrategias["Alternativo"].valor;
@@ -741,7 +738,7 @@ async function extrairDadosPDF(file) {
     log('[Alternativo] somado ao Multimercado');
   }
 
-  // Recalcular percentuais a partir dos valores, se necessário
+  // ── Recalcular percentuais a partir dos valores quando necessário ──
   const totalValores = CLASSES.reduce((s,c) => s + (estrategias[c]?.valor||0), 0);
   if (totalValores > 0) {
     for (const c of CLASSES) {
