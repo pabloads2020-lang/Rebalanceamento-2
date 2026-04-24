@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-    <title>Rebalanceador de Carteira - Leitura Estrutura XP</title>
+    <title>Rebalanceador de Carteira XP - Leitura Completa</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Roboto, sans-serif; }
         body { background: linear-gradient(135deg, #0b2b3b 0%, #1a4a5f 100%); margin: 0; padding: 20px; min-height: 100vh; }
@@ -36,9 +36,10 @@
         .retirar { background: #ffedd5; color: #9a3412; }
         .legenda { display: flex; gap: 20px; justify-content: center; margin-top: 15px; flex-wrap: wrap; }
         .footer { text-align: center; color: #cbd5e1; font-size: 13px; margin-top: 20px; }
-        .detalhes-importacao { background: #e0f2fe; padding: 12px; border-radius: 12px; margin-top: 15px; font-size: 13px; max-height: 400px; overflow-y: auto; display: none; }
+        .detalhes-importacao { background: #e0f2fe; padding: 12px; border-radius: 12px; margin-top: 15px; font-size: 13px; max-height: 450px; overflow-y: auto; display: none; }
         .detalhes-importacao.show { display: block; }
         .secao-encontrada { background: #cbd5e1; padding: 4px 8px; margin: 8px 0 4px 0; font-weight: bold; border-radius: 8px; }
+        .valor-diferenca { color: red; font-weight: bold; }
     </style>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 </head>
@@ -46,16 +47,16 @@
 <div class="container">
     <div class="card">
         <h1>📊 Rebalanceador de Carteira XP</h1>
-        <div class="sub">Leitura correta da estrutura: identifica seções e soma Valores Líquidos e Posições</div>
+        <div class="sub">Leitura completa: Total investido, Ações, Prefixada, Pós, Inflação, Fundos e Previdência</div>
         
         <div class="upload-area">
             <h3>📎 Upload do extrato consolidado XP Investimentos</h3>
             <div class="file-input-wrapper">
                 <input type="file" id="fileExcel" accept=".xlsx, .xls" />
-                <button class="btn-excel" id="btnProcessarExcel">📂 Importar posições da XP</button>
+                <button class="btn-excel" id="btnProcessarExcel">📂 Importar posições completas da XP</button>
             </div>
             <div style="font-size:12px; margin-top:10px;">
-                ✅ Lê: Ações (Posição) | Prefixada/Pós/Inflação (Valor líquido) | Fundos (Valor líquido) | Previdência (classifica por FICFIA/FICFIM)
+                ✅ Lê: Total investido | Ações (Posição) | Prefixada/Pós/Inflação (Valor líquido) | Fundos (Valor líquido) | Previdência (Posição + classifica por FICFIA/FICFIM)
             </div>
             <div id="detalhesImportacao" class="detalhes-importacao"></div>
         </div>
@@ -111,7 +112,8 @@
     let somaRendaFixaInflacao = 0;
     let somaMultiestrategia = 0;
     let somaRendaVariavel = 0;
-    let totalPatrimonio = 0;
+    let totalPatrimonioReferencia = 0;
+    let totalPatrimonioCalculado = 0;
     
     let detalhesImportacao = [];
     
@@ -119,9 +121,16 @@
     function extrairValorMonetario(texto) {
         if (!texto) return 0;
         if (typeof texto === 'number') return texto;
-        const match = texto.toString().match(/R?\$?\s*([\d\.\,]+)/);
+        const textoStr = texto.toString().trim();
+        // Remove R$ e espaços
+        let limpo = textoStr.replace(/R\$/g, '').replace(/\./g, '').replace(',', '.').trim();
+        let valor = parseFloat(limpo);
+        if (!isNaN(valor) && valor > 0) return valor;
+        
+        // Tenta regex mais robusto
+        const match = textoStr.match(/(\d+[\.,]?\d*)/);
         if (match) {
-            let valor = parseFloat(match[1].replace(/\./g, '').replace(',', '.'));
+            valor = parseFloat(match[1].replace(',', '.'));
             return isNaN(valor) ? 0 : valor;
         }
         return 0;
@@ -152,7 +161,8 @@
             somaRendaFixaInflacao = 0;
             somaMultiestrategia = 0;
             somaRendaVariavel = 0;
-            totalPatrimonio = 0;
+            totalPatrimonioReferencia = 0;
+            totalPatrimonioCalculado = 0;
             detalhesImportacao = [];
             
             let secaoAtual = "";
@@ -163,51 +173,43 @@
                 if (!linha || linha.length === 0) continue;
                 
                 const primeiraCelula = (linha[0] || "").toString().trim();
-                const textoSegundaCelula = (linha[1] || "").toString().trim();
                 const textoLinha = linha.join(" ").toLowerCase();
                 
-                // ==================== IDENTIFICA SEÇÕES PRINCIPAIS ====================
-                // Ações
+                // ==================== LÊ O TOTAL INVESTIDO (REFERÊNCIA) ====================
+                if (textoLinha.includes("total investido") || (primeiraCelula.includes("Total investido"))) {
+                    // O valor está na segunda coluna (índice 1)
+                    if (linha[1]) {
+                        totalPatrimonioReferencia = extrairValorMonetario(linha[1]);
+                        detalhesImportacao.push({ secao: "REFERÊNCIA", nome: "Total investido (XP)", valor: totalPatrimonioReferencia });
+                    }
+                }
+                
+                // ==================== IDENTIFICA SEÇÕES ====================
                 if (textoLinha.includes("ações") && textoLinha.includes("%")) {
                     secaoAtual = "ACOES";
                     tipoSecao = "ACOES";
-                    // Extrai o percentual da seção (ex: "3,80%|Ações")
-                    const matchPct = primeiraCelula.match(/(\d+[\.,]?\d*)%/);
-                    if (matchPct) {
-                        detalhesImportacao.push({ secao: "Ações", info: `Percentual identificado: ${matchPct[1]}%`, valor: 0 });
-                    }
                     continue;
                 }
-                
-                // Prefixada
                 if (textoLinha.includes("prefixada") && textoLinha.includes("%")) {
                     secaoAtual = "PREFIXADA";
                     tipoSecao = "PREFIXADA";
                     continue;
                 }
-                
-                // Pós-Fixada
                 if (textoLinha.includes("pós-fixada") && textoLinha.includes("%")) {
                     secaoAtual = "POSFIXADA";
                     tipoSecao = "POSFIXADA";
                     continue;
                 }
-                
-                // Inflação
                 if (textoLinha.includes("inflação") && textoLinha.includes("%")) {
                     secaoAtual = "INFLACAO";
                     tipoSecao = "INFLACAO";
                     continue;
                 }
-                
-                // Fundos de Investimento
                 if (textoLinha.includes("fundos de investimento") && textoLinha.includes("%")) {
                     secaoAtual = "FUNDOS";
                     tipoSecao = "FUNDOS";
                     continue;
                 }
-                
-                // Subseções de Fundos
                 if (secaoAtual === "FUNDOS") {
                     if (textoLinha.includes("fundos de renda fixa pós-fixado")) {
                         tipoSecao = "FUNDOS_POS";
@@ -222,8 +224,6 @@
                         continue;
                     }
                 }
-                
-                // Previdência Privada
                 if (textoLinha.includes("previdência privada") && textoLinha.includes("%")) {
                     secaoAtual = "PREVIDENCIA";
                     tipoSecao = "PREVIDENCIA";
@@ -236,37 +236,34 @@
                 if (tipoSecao === "ACOES" && linha.length > 10) {
                     const ultimaColuna = linha[linha.length - 1];
                     let valorAcao = extrairValorMonetario(ultimaColuna);
-                    if (valorAcao > 0 && valorAcao < 100000000) {
+                    if (valorAcao > 0 && valorAcao < 100000000 && !primeiraCelula.includes("Ações")) {
                         somaRendaVariavel += valorAcao;
-                        detalhesImportacao.push({ secao: "Ações", nome: linha[0], valor: valorAcao });
+                        detalhesImportacao.push({ secao: "Ações", nome: linha[0] || "Ativo", valor: valorAcao });
                     }
                 }
                 
-                // PREFIXADA: procura coluna "Valor líquido" (índice 9 ou 10)
+                // PREFIXADA: coluna "Valor líquido" (índice 9)
                 if (tipoSecao === "PREFIXADA" && linha.length > 9) {
-                    let valor = extrairValorMonetario(linha[9]); // Valor líquido
-                    if (valor === 0) valor = extrairValorMonetario(linha[10]);
-                    if (valor > 0 && valor < 100000000 && !linha[0]?.toString().includes("Prefixada")) {
+                    let valor = extrairValorMonetario(linha[9]);
+                    if (valor > 0 && valor < 100000000 && !primeiraCelula.includes("Prefixada") && linha[0] && !linha[0].toString().includes("Prefixada")) {
                         somaRendaFixaPre += valor;
                         detalhesImportacao.push({ secao: "Prefixada (Pré)", nome: linha[0], valor: valor });
                     }
                 }
                 
-                // POSFIXADA: procura coluna "Valor líquido"
+                // POSFIXADA: coluna "Valor líquido" (índice 9)
                 if (tipoSecao === "POSFIXADA" && linha.length > 9) {
                     let valor = extrairValorMonetario(linha[9]);
-                    if (valor === 0) valor = extrairValorMonetario(linha[10]);
-                    if (valor > 0 && valor < 100000000 && !linha[0]?.toString().includes("Pós-Fixada")) {
+                    if (valor > 0 && valor < 100000000 && !primeiraCelula.includes("Pós-Fixada") && linha[0] && !linha[0].toString().includes("Pós-Fixada")) {
                         somaRendaFixaPos += valor;
                         detalhesImportacao.push({ secao: "Pós-Fixada", nome: linha[0], valor: valor });
                     }
                 }
                 
-                // INFLACAO: procura coluna "Valor líquido"
+                // INFLACAO: coluna "Valor líquido" (índice 9)
                 if (tipoSecao === "INFLACAO" && linha.length > 9) {
                     let valor = extrairValorMonetario(linha[9]);
-                    if (valor === 0) valor = extrairValorMonetario(linha[10]);
-                    if (valor > 0 && valor < 100000000 && !linha[0]?.toString().includes("Inflação")) {
+                    if (valor > 0 && valor < 100000000 && !primeiraCelula.includes("Inflação") && linha[0] && !linha[0].toString().includes("Inflação")) {
                         somaRendaFixaInflacao += valor;
                         detalhesImportacao.push({ secao: "Inflação", nome: linha[0], valor: valor });
                     }
@@ -275,8 +272,7 @@
                 // FUNDOS PÓS-FIXADOS: coluna "Valor líquido" (índice 6)
                 if (tipoSecao === "FUNDOS_POS" && linha.length > 6) {
                     let valor = extrairValorMonetario(linha[6]);
-                    if (valor === 0) valor = extrairValorMonetario(linha[5]);
-                    if (valor > 0 && valor < 100000000 && !linha[0]?.toString().includes("Fundos")) {
+                    if (valor > 0 && valor < 100000000 && linha[0] && !linha[0].toString().includes("Fundos")) {
                         somaRendaFixaPos += valor;
                         detalhesImportacao.push({ secao: "Fundos Pós-Fixado", nome: linha[0], valor: valor });
                     }
@@ -285,8 +281,7 @@
                 // FUNDOS INFLACAO
                 if (tipoSecao === "FUNDOS_INFLACAO" && linha.length > 6) {
                     let valor = extrairValorMonetario(linha[6]);
-                    if (valor === 0) valor = extrairValorMonetario(linha[5]);
-                    if (valor > 0 && valor < 100000000 && !linha[0]?.toString().includes("Fundos")) {
+                    if (valor > 0 && valor < 100000000 && linha[0] && !linha[0].toString().includes("Fundos")) {
                         somaRendaFixaInflacao += valor;
                         detalhesImportacao.push({ secao: "Fundos Inflação", nome: linha[0], valor: valor });
                     }
@@ -295,8 +290,7 @@
                 // FUNDOS MULTIMERCADO
                 if (tipoSecao === "FUNDOS_MULTI" && linha.length > 6) {
                     let valor = extrairValorMonetario(linha[6]);
-                    if (valor === 0) valor = extrairValorMonetario(linha[5]);
-                    if (valor > 0 && valor < 100000000 && !linha[0]?.toString().includes("Fundos")) {
+                    if (valor > 0 && valor < 100000000 && linha[0] && !linha[0].toString().includes("Fundos")) {
                         somaMultiestrategia += valor;
                         detalhesImportacao.push({ secao: "Fundos Multimercado", nome: linha[0], valor: valor });
                     }
@@ -307,7 +301,7 @@
                     const nomeFundo = linha[0]?.toString() || "";
                     const ultimaColuna = linha[linha.length - 1];
                     let valor = extrairValorMonetario(ultimaColuna);
-                    if (valor > 0 && valor < 100000000 && nomeFundo.length > 3) {
+                    if (valor > 0 && valor < 100000000 && nomeFundo.length > 3 && !nomeFundo.includes("Previdência")) {
                         const classe = classificarPrevidencia(nomeFundo);
                         if (classe === "Renda Variável") somaRendaVariavel += valor;
                         else if (classe === "Multiestratégia") somaMultiestrategia += valor;
@@ -320,20 +314,26 @@
                 }
             }
             
-            // Soma total do patrimônio
-            totalPatrimonio = somaRendaFixaPos + somaRendaFixaPre + somaRendaFixaInflacao + somaMultiestrategia + somaRendaVariavel;
+            // Usa o total investido como referência de patrimônio
+            let patrimonioUsado = totalPatrimonioReferencia;
+            if (patrimonioUsado === 0) {
+                // Fallback: soma todos os valores encontrados
+                patrimonioUsado = somaRendaFixaPos + somaRendaFixaPre + somaRendaFixaInflacao + somaMultiestrategia + somaRendaVariavel;
+            }
             
-            if (totalPatrimonio === 0) {
-                alert("Não foi possível identificar valores. Verifique o arquivo.");
+            totalPatrimonioCalculado = somaRendaFixaPos + somaRendaFixaPre + somaRendaFixaInflacao + somaMultiestrategia + somaRendaVariavel;
+            
+            if (patrimonioUsado === 0) {
+                alert("Não foi possível identificar o patrimônio total. Verifique o arquivo.");
                 return;
             }
             
-            // Calcula percentuais
-            const pctPos = (somaRendaFixaPos / totalPatrimonio) * 100;
-            const pctPre = (somaRendaFixaPre / totalPatrimonio) * 100;
-            const pctInflacao = (somaRendaFixaInflacao / totalPatrimonio) * 100;
-            const pctMulti = (somaMultiestrategia / totalPatrimonio) * 100;
-            const pctRV = (somaRendaVariavel / totalPatrimonio) * 100;
+            // Calcula percentuais baseado no patrimônio de referência
+            const pctPos = (somaRendaFixaPos / patrimonioUsado) * 100;
+            const pctPre = (somaRendaFixaPre / patrimonioUsado) * 100;
+            const pctInflacao = (somaRendaFixaInflacao / patrimonioUsado) * 100;
+            const pctMulti = (somaMultiestrategia / patrimonioUsado) * 100;
+            const pctRV = (somaRendaVariavel / patrimonioUsado) * 100;
             
             // Preenche os inputs
             if (inputsAtuais["Renda Fixa Pós"]) inputsAtuais["Renda Fixa Pós"].value = pctPos.toFixed(2);
@@ -346,15 +346,19 @@
             
             // Exibe detalhes
             const detalhesDiv = document.getElementById("detalhesImportacao");
-            let detalhesHtml = `<strong>✅ Importação concluída! Patrimônio total: R$ ${totalPatrimonio.toLocaleString('pt-BR')}</strong><br><br>`;
-            detalhesHtml += `<strong>📊 Resumo por classe (valores em R$):</strong><br>`;
+            let detalhesHtml = `<strong>✅ Importação concluída!</strong><br><br>`;
+            detalhesHtml += `<strong>💰 Patrimônio total (referência XP): R$ ${patrimonioUsado.toLocaleString('pt-BR')}</strong><br>`;
+            if (Math.abs(totalPatrimonioCalculado - patrimonioUsado) > 100) {
+                detalhesHtml += `<span class="valor-diferenca">⚠️ Atenção: Soma dos ativos calculados = R$ ${totalPatrimonioCalculado.toLocaleString('pt-BR')} (diferença de R$ ${(patrimonioUsado - totalPatrimonioCalculado).toLocaleString('pt-BR')})</span><br>`;
+            }
+            detalhesHtml += `<br><strong>📊 Resumo por classe (valores em R$):</strong><br>`;
             detalhesHtml += `Renda Fixa Pós: R$ ${somaRendaFixaPos.toLocaleString('pt-BR')} (${pctPos.toFixed(2)}%)<br>`;
             detalhesHtml += `Renda Fixa Pré: R$ ${somaRendaFixaPre.toLocaleString('pt-BR')} (${pctPre.toFixed(2)}%)<br>`;
             detalhesHtml += `Renda Fixa Inflação: R$ ${somaRendaFixaInflacao.toLocaleString('pt-BR')} (${pctInflacao.toFixed(2)}%)<br>`;
             detalhesHtml += `Multiestratégia: R$ ${somaMultiestrategia.toLocaleString('pt-BR')} (${pctMulti.toFixed(2)}%)<br>`;
             detalhesHtml += `Renda Variável: R$ ${somaRendaVariavel.toLocaleString('pt-BR')} (${pctRV.toFixed(2)}%)<br><br>`;
             
-            detalhesHtml += `<strong>🔍 Detalhamento dos ativos:</strong><br>`;
+            detalhesHtml += `<strong>🔍 Detalhamento dos ativos lidos:</strong><br>`;
             detalhesImportacao.forEach(item => {
                 detalhesHtml += `<span style="font-size:11px;">• ${item.secao}: ${item.nome} → R$ ${item.valor.toLocaleString('pt-BR')} ${item.classificacao ? `[${item.classificacao}]` : ''}</span><br>`;
             });
@@ -362,7 +366,7 @@
             detalhesDiv.innerHTML = detalhesHtml;
             detalhesDiv.classList.add("show");
             
-            alert(`✅ Importado! Patrimônio: R$ ${totalPatrimonio.toLocaleString('pt-BR')}\nPos: ${pctPos.toFixed(1)}% | Pré: ${pctPre.toFixed(1)}% | Inflação: ${pctInflacao.toFixed(1)}% | Multi: ${pctMulti.toFixed(1)}% | RV: ${pctRV.toFixed(1)}%`);
+            alert(`✅ Importado! Patrimônio XP: R$ ${patrimonioUsado.toLocaleString('pt-BR')}\nPos: ${pctPos.toFixed(1)}% | Pré: ${pctPre.toFixed(1)}% | Inflação: ${pctInflacao.toFixed(1)}% | Multi: ${pctMulti.toFixed(1)}% | RV: ${pctRV.toFixed(1)}%`);
         };
         reader.readAsArrayBuffer(file);
     }
