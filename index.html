@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rebalanceador de Carteira · XP</title>
+<title>Rebalanceador de Carteira · XP - VERSÃO DEFINITIVA</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
@@ -41,7 +41,6 @@
   .status-bar.show { display: flex; }
   .status-ok { background: var(--green-bg); color: var(--green); border: 1px solid rgba(46,204,113,0.2); }
   .status-err { background: var(--red-bg); color: var(--red); border: 1px solid rgba(231,76,60,0.2); }
-  .status-info { background: #3498db20; color: #3498db; border: 1px solid #3498db30; }
   .patrimonio-tag { display: inline-flex; align-items: center; gap: 6px; background: rgba(245,200,66,0.1); border: 1px solid rgba(245,200,66,0.25); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 500; color: var(--gold); margin-top: .75rem; }
   .perfis-section { margin-bottom: 1.5rem; }
   .section-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: .75rem; }
@@ -174,7 +173,7 @@
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// CARTEIRAS RECOMENDADAS CORRETAS (8 CLASSES)
+// CARTEIRAS RECOMENDADAS CORRETAS
 const PERFIS = {
   Conservador: {
     "Renda Fixa Pós": 85, "Renda Fixa Pré": 15, "Renda Fixa Inflação": 0,
@@ -251,13 +250,7 @@ async function extrairDadosPDF(file) {
     const tc = await page.getTextContent();
     const pageText = tc.items.map(item => item.str).join(' ');
     textoCompleto += pageText + ' ';
-    addDebug(`📃 Página ${p}: extraiu ${tc.items.length} itens`);
   }
-  
-  // MOSTRAR AMOSTRA DO TEXTO PARA DEBUG
-  addDebug('--- AMOSTRA DO TEXTO (primeiros 1500 caracteres) ---');
-  addDebug(textoCompleto.substring(0, 1500));
-  addDebug('--- FIM DA AMOSTRA ---');
   
   // Buscar Patrimônio
   let patrimonioTotal = 0;
@@ -265,19 +258,10 @@ async function extrairDadosPDF(file) {
   if (patMatch) {
     patrimonioTotal = numBR(patMatch[1]);
     addDebug(`💰 Patrimônio encontrado: R$ ${patrimonioTotal.toLocaleString('pt-BR')}`);
-  } else {
-    addDebug('⚠️ Patrimônio NÃO encontrado');
   }
   
-  // Mapeamento dos nomes do PDF para as classes
-  const mapeamento = {
-    "Pós Fixado": "Renda Fixa Pós",
-    "Pré Fixado": "Renda Fixa Pré", 
-    "Inflação": "Renda Fixa Inflação",
-    "Multimercado": "Multiestratégia",
-    "Renda Variável Brasil": "Renda Variável",
-    "Alternativo": "Renda Variável"  // Alternativo soma na Renda Variável
-  };
+  // ========== EXTRAÇÃO ESPECÍFICA PARA O FORMATO DO SEU PDF ==========
+  // O formato real: "Pós Fixado (42,61%) R$ 1.242.086,14"
   
   let resultados = {
     "Renda Fixa Pós": 0,
@@ -290,51 +274,47 @@ async function extrairDadosPDF(file) {
     "Alternativo": 0
   };
   
-  // ESTRATÉGIA 1: Buscar padrão "- Nome (XX,XX%)"
-  const regex1 = /[-–]\s*([A-Za-zÀ-Úà-ú\s]+?)\s*\((\d{1,3},\d{2})%\)/gi;
+  // Regex que captura: Nome (XX,XX%) 
+  // Funciona para: "Pós Fixado (42,61%)", "Inflação (20,90%)", etc.
+  const regexSimples = /([A-Za-zÀ-Úà-ú\s]+?)\s*\((\d{1,3},\d{2})%\)/gi;
+  
   let match;
-  while ((match = regex1.exec(textoCompleto)) !== null) {
+  while ((match = regexSimples.exec(textoCompleto)) !== null) {
     let nomeOrig = match[1].trim();
     let pct = parseFloat(match[2].replace(',', '.'));
-    addDebug(`🔍 [Regex1] Encontrou: "${nomeOrig}" = ${pct}%`);
     
-    for (const [orig, destino] of Object.entries(mapeamento)) {
-      if (nomeOrig.includes(orig) || nomeOrig === orig) {
-        resultados[destino] += pct;
-        addDebug(`   → Mapeado para: ${destino} (agora ${resultados[destino]}%)`);
-        break;
-      }
+    // Mapeamento direto
+    if (nomeOrig === "Pós Fixado") {
+      resultados["Renda Fixa Pós"] = pct;
+      addDebug(`✅ Pós Fixado: ${pct}%`);
+    }
+    else if (nomeOrig === "Pré Fixado") {
+      resultados["Renda Fixa Pré"] = pct;
+      addDebug(`✅ Pré Fixado: ${pct}%`);
+    }
+    else if (nomeOrig === "Inflação") {
+      resultados["Renda Fixa Inflação"] = pct;
+      addDebug(`✅ Inflação: ${pct}%`);
+    }
+    else if (nomeOrig === "Multimercado") {
+      resultados["Multiestratégia"] = pct;
+      addDebug(`✅ Multimercado: ${pct}%`);
+    }
+    else if (nomeOrig === "Renda Variável Brasil") {
+      resultados["Renda Variável"] = pct;
+      addDebug(`✅ Renda Variável Brasil: ${pct}%`);
+    }
+    else if (nomeOrig === "Alternativo") {
+      resultados["Renda Variável"] += pct;
+      addDebug(`✅ Alternativo: ${pct}% (somado à Renda Variável = ${resultados["Renda Variável"]}%)`);
+    }
+    else if (nomeOrig === "Renda Variável Global") {
+      resultados["Renda Variável Global"] = pct;
+      addDebug(`✅ Renda Variável Global: ${pct}%`);
     }
   }
   
-  // ESTRATÉGIA 2: Buscar sem o traço
-  if (resultados["Renda Fixa Pós"] === 0 && resultados["Renda Fixa Pré"] === 0) {
-    addDebug('Tentando estratégia 2 (sem o traço)');
-    const regex2 = /(Pós Fixado|Pré Fixado|Inflação|Multimercado|Renda Variável Brasil|Alternativo)\s*\((\d{1,3},\d{2})%\)/gi;
-    while ((match = regex2.exec(textoCompleto)) !== null) {
-      let nomeOrig = match[1].trim();
-      let pct = parseFloat(match[2].replace(',', '.'));
-      addDebug(`🔍 [Regex2] Encontrou: "${nomeOrig}" = ${pct}%`);
-      
-      for (const [orig, destino] of Object.entries(mapeamento)) {
-        if (nomeOrig.includes(orig) || nomeOrig === orig) {
-          resultados[destino] += pct;
-          addDebug(`   → Mapeado para: ${destino} (agora ${resultados[destino]}%)`);
-          break;
-        }
-      }
-    }
-  }
-  
-  // Soma Renda Variável Global se existir (mesma classe)
-  const rvGlobalMatch = textoCompleto.match(/Renda Variável Global[^0-9]*?(\d{1,3},\d{2})%/i);
-  if (rvGlobalMatch) {
-    const pctGlobal = parseFloat(rvGlobalMatch[1].replace(',', '.'));
-    resultados["Renda Variável Global"] = pctGlobal;
-    addDebug(`🌍 Renda Variável Global: ${pctGlobal}%`);
-  }
-  
-  addDebug('--- RESULTADOS FINAIS DA EXTRAÇÃO ---');
+  addDebug('--- RESULTADOS FINAIS ---');
   for (const [k, v] of Object.entries(resultados)) {
     if (v > 0) addDebug(`${k}: ${v}%`);
   }
@@ -479,8 +459,6 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
       if (resultados[classe] > 0) {
         inputsMap[classe].value = resultados[classe].toFixed(2);
         encontrou = true;
-      } else {
-        inputsMap[classe].value = '0';
       }
     }
     atualizarTotal();
@@ -492,7 +470,7 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
         document.getElementById('patrimonioTag').style.display = 'inline-flex';
       }
     } else {
-      showStatus('❌ Não foi possível extrair os percentuais. Veja o debug abaixo.', 'err');
+      showStatus('❌ Não foi possível extrair os percentuais. Veja o debug acima.', 'err');
     }
   } catch (err) {
     showStatus('Erro ao processar PDF: ' + err.message, 'err');
