@@ -38,6 +38,8 @@
         .detalhes-importacao.show { display: block; }
         .alerta-limpeza { background: #16a34a; color: white; padding: 10px; border-radius: 12px; margin-top: 10px; display: none; }
         .alerta-limpeza.show { display: block; }
+        .alerta-erro { background: #dc2626; color: white; padding: 10px; border-radius: 12px; margin-top: 10px; display: none; }
+        .alerta-erro.show { display: block; }
         .loading { background: #f59e0b; color: white; padding: 10px; border-radius: 12px; margin-top: 10px; display: none; }
         .loading.show { display: block; }
     </style>
@@ -58,6 +60,7 @@
             </div>
             <div id="loadingMsg" class="loading">⏳ Processando PDF... Aguarde...</div>
             <div id="alertaLimpeza" class="alerta-limpeza"></div>
+            <div id="alertaErro" class="alerta-erro"></div>
             <div id="detalhesImportacao" class="detalhes-importacao"></div>
         </div>
         
@@ -96,10 +99,11 @@
 <script>
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
+    // ========== PERCENTUAIS ORIGINAIS DO SEU APP ==========
     const carteiraRecomendada = {
-        Conservador: { "Pós Fixado": 70, "Pré Fixado": 20, "Inflação": 10, "Multimercado": 0, "Renda Variável": 0 },
-        Moderado: { "Pós Fixado": 45, "Pré Fixado": 15, "Inflação": 20, "Multimercado": 10, "Renda Variável": 10 },
-        Agressivo: { "Pós Fixado": 30, "Pré Fixado": 10, "Inflação": 20, "Multimercado": 15, "Renda Variável": 25 }
+        Conservador: { "Pós Fixado": 85, "Pré Fixado": 15, "Inflação": 0, "Multimercado": 0, "Renda Variável": 0 },
+        Moderado: { "Pós Fixado": 54, "Pré Fixado": 13, "Inflação": 20, "Multimercado": 5, "Renda Variável": 4 },
+        Agressivo: { "Pós Fixado": 44, "Pré Fixado": 15, "Inflação": 24, "Multimercado": 5, "Renda Variável": 6 }
     };
     
     const classes = ["Pós Fixado", "Pré Fixado", "Inflação", "Multimercado", "Renda Variável"];
@@ -110,38 +114,51 @@
         if (!texto) return 0;
         if (typeof texto === 'number') return texto;
         
-        let limpo = texto.toString().replace(/R\$/, '').replace(/\./g, '').replace(',', '.').trim();
+        let limpo = texto.toString()
+            .replace(/R\$\s*/g, '')
+            .replace(/\./g, '')
+            .replace(',', '.')
+            .trim();
+        
         let num = parseFloat(limpo);
         return isNaN(num) ? 0 : num;
     }
 
-    // FUNÇÃO PARA RESETAR COMPLETO
-    function limparTudo(mensagem = "✅ Dados resetados! Pronto para importar um novo cliente.") {
-        // 1. Reset dos inputs percentuais
+    function mostrarErro(mensagem) {
+        const erroDiv = document.getElementById("alertaErro");
+        erroDiv.innerHTML = mensagem;
+        erroDiv.classList.add("show");
+        setTimeout(() => {
+            erroDiv.classList.remove("show");
+        }, 5000);
+    }
+
+    function limparTudo(mensagem = "✅ Dados resetados! Pronto para novo cliente.") {
+        // Reset dos inputs
         classes.forEach(classe => {
             if (inputsAtuais[classe]) {
                 inputsAtuais[classe].value = "0";
             }
         });
         
-        // 2. Atualiza total
         atualizarTotal();
         
-        // 3. Limpa área de recomendações
+        // Limpa recomendações
         document.getElementById("lista-recomendacoes").innerHTML = '<span style="color:#777;">Clique em "Analisar" após preencher os percentuais.</span>';
         
-        // 4. Limpa detalhes da importação
+        // Limpa detalhes
         const detalhesDiv = document.getElementById("detalhesImportacao");
         detalhesDiv.innerHTML = "";
         detalhesDiv.classList.remove("show");
         
-        // 5. 🔥 CRÍTICO: Reseta o input file completamente
-        const fileInput = document.getElementById("filePdf");
-        fileInput.value = "";  // Isso força o reset do arquivo carregado
-        fileInput.type = "text";
-        fileInput.type = "file";
+        // Limpa erro
+        const erroDiv = document.getElementById("alertaErro");
+        erroDiv.classList.remove("show");
         
-        // 6. Mostra alerta de confirmação
+        // 🔥 RESET COMPLETO do input file
+        const fileInput = document.getElementById("filePdf");
+        fileInput.value = "";
+        
         const alerta = document.getElementById("alertaLimpeza");
         alerta.innerHTML = mensagem;
         alerta.classList.add("show");
@@ -149,13 +166,11 @@
         setTimeout(() => {
             alerta.classList.remove("show");
         }, 3000);
-        
-        console.log("✅ Limpeza completa realizada! Input file resetado.");
     }
 
     async function processarPdf(file) {
         if (!file) {
-            alert("❌ Nenhum arquivo selecionado! Clique em 'Limpar' e selecione um novo PDF.");
+            mostrarErro("❌ Nenhum arquivo selecionado!");
             return;
         }
         
@@ -175,54 +190,75 @@
                 textoCompleto += pageText + "\n";
             }
             
-            const linhas = textoCompleto.split('\n');
+            // ========== EXTRAIR DADOS DA TABELA ==========
+            // Busca pela seção "POSIÇÃO DETALHADA DOS ATIVOS"
+            const posicaoIndex = textoCompleto.indexOf("POSIÇÃO DETALHADA DOS ATIVOS");
+            if (posicaoIndex === -1) {
+                mostrarErro("❌ Não foi possível encontrar a seção 'POSIÇÃO DETALHADA DOS ATIVOS' no PDF.");
+                loadingDiv.classList.remove("show");
+                return;
+            }
+            
+            // Pega o texto a partir da posição encontrada
+            const textoPosicao = textoCompleto.substring(posicaoIndex);
+            
+            // Regex mais robusto para capturar cada linha da tabela
+            // Padrão: "Pós Fixado R$ 289.044,97 46,18%"
+            const linhas = textoPosicao.split('\n');
             let resultados = {};
             let totalPatrimonio = 0;
             
-            const regexAtivo = /(Pós Fixado|Inflação|Pré Fixado|Multimercado|Renda Variável Brasil|Alternativo|Renda Variável Global)\s+R\$?\s*([\d\.]+,\d+)\s+(\d+[\.,]?\d*)%/i;
+            // Lista de estratégias que queremos capturar
+            const estrategias = ["Pós Fixado", "Pré Fixado", "Inflação", "Multimercado", "Renda Variável Brasil", "Renda Variável Global", "Alternativo"];
             
             for (const linha of linhas) {
-                const match = linha.match(regexAtivo);
-                if (match) {
-                    let estrategia = match[1];
-                    let saldo = extrairNumero(match[2]);
-                    let percentual = parseFloat(match[3].replace(',', '.'));
+                for (const estrategia of estrategias) {
+                    // Regex para encontrar: Estratégia + R$ + valor + percentual
+                    const regex = new RegExp(`${estrategia}\\s+R\\$?\\s*([\\d\\.]+,\\d+)\\s+(\\d+[\\.,]?\\d*)%`, 'i');
+                    const match = linha.match(regex);
                     
-                    let classeMapeada = estrategia;
-                    if (estrategia === "Renda Variável Brasil") classeMapeada = "Renda Variável";
-                    if (estrategia === "Renda Variável Global") classeMapeada = "Renda Variável";
-                    if (estrategia === "Alternativo") classeMapeada = "Multimercado";
-                    
-                    if (!resultados[classeMapeada]) {
-                        resultados[classeMapeada] = { saldo: 0, percentual: 0 };
+                    if (match) {
+                        let saldo = extrairNumero(match[1]);
+                        let percentual = parseFloat(match[2].replace(',', '.'));
+                        
+                        let classeMapeada = estrategia;
+                        if (estrategia === "Renda Variável Brasil") classeMapeada = "Renda Variável";
+                        if (estrategia === "Renda Variável Global") classeMapeada = "Renda Variável";
+                        if (estrategia === "Alternativo") classeMapeada = "Multimercado";
+                        
+                        if (!resultados[classeMapeada]) {
+                            resultados[classeMapeada] = { saldo: 0 };
+                        }
+                        resultados[classeMapeada].saldo += saldo;
+                        totalPatrimonio += saldo;
+                        
+                        break; // Sai do loop de estratégias quando encontrar
                     }
-                    resultados[classeMapeada].saldo += saldo;
-                    
-                    if (resultados[classeMapeada].percentual === 0) {
-                        resultados[classeMapeada].percentual = percentual;
-                    }
-                    
-                    totalPatrimonio += saldo;
                 }
             }
             
+            // Verifica se encontrou dados
             if (Object.keys(resultados).length === 0) {
-                resultados = {
-                    "Pós Fixado": { saldo: 289044.97, percentual: 46.18 },
-                    "Inflação": { saldo: 49344.62, percentual: 7.88 },
-                    "Pré Fixado": { saldo: 53164.64, percentual: 8.49 },
-                    "Multimercado": { saldo: 32624.86 + 93170.79, percentual: 5.21 + 14.89 },
-                    "Renda Variável": { saldo: 50000.00 + 58548.40, percentual: 7.99 + 9.35 }
-                };
-                totalPatrimonio = 289044.97 + 49344.62 + 53164.64 + (32624.86 + 93170.79) + (50000.00 + 58548.40);
+                mostrarErro("❌ Não foi possível extrair os dados da tabela. Verifique se o PDF está no formato esperado.");
+                loadingDiv.classList.remove("show");
+                return;
             }
             
-            let pctPos = (resultados["Pós Fixado"]?.saldo / totalPatrimonio) * 100;
-            let pctPre = (resultados["Pré Fixado"]?.saldo / totalPatrimonio) * 100;
-            let pctInflacao = (resultados["Inflação"]?.saldo / totalPatrimonio) * 100;
-            let pctMulti = (resultados["Multimercado"]?.saldo / totalPatrimonio) * 100;
-            let pctRV = (resultados["Renda Variável"]?.saldo / totalPatrimonio) * 100;
+            // Garante que todas as classes existam
+            classes.forEach(classe => {
+                if (!resultados[classe]) {
+                    resultados[classe] = { saldo: 0 };
+                }
+            });
             
+            // Calcula percentuais
+            let pctPos = (resultados["Pós Fixado"].saldo / totalPatrimonio) * 100;
+            let pctPre = (resultados["Pré Fixado"].saldo / totalPatrimonio) * 100;
+            let pctInflacao = (resultados["Inflação"].saldo / totalPatrimonio) * 100;
+            let pctMulti = (resultados["Multimercado"].saldo / totalPatrimonio) * 100;
+            let pctRV = (resultados["Renda Variável"].saldo / totalPatrimonio) * 100;
+            
+            // Preenche os inputs
             if (inputsAtuais["Pós Fixado"]) inputsAtuais["Pós Fixado"].value = pctPos.toFixed(2);
             if (inputsAtuais["Pré Fixado"]) inputsAtuais["Pré Fixado"].value = pctPre.toFixed(2);
             if (inputsAtuais["Inflação"]) inputsAtuais["Inflação"].value = pctInflacao.toFixed(2);
@@ -231,30 +267,32 @@
             
             atualizarTotal();
             
+            // Detalhes da importação
             const detalhesDiv = document.getElementById("detalhesImportacao");
             detalhesDiv.innerHTML = `
                 <strong>✅ Importação do PDF concluída!</strong><br><br>
                 <strong>💰 Patrimônio total: R$ ${totalPatrimonio.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong><br><br>
                 
-                <strong>📊 Valores por classe (extraídos do PDF):</strong><br>
-                🟢 Pós Fixado: R$ ${resultados["Pós Fixado"]?.saldo.toLocaleString('pt-BR') || 0} = <strong>${pctPos.toFixed(2)}%</strong><br>
-                🟡 Pré Fixado: R$ ${resultados["Pré Fixado"]?.saldo.toLocaleString('pt-BR') || 0} = <strong>${pctPre.toFixed(2)}%</strong><br>
-                📈 Inflação: R$ ${resultados["Inflação"]?.saldo.toLocaleString('pt-BR') || 0} = <strong>${pctInflacao.toFixed(2)}%</strong><br>
-                🔄 Multimercado: R$ ${resultados["Multimercado"]?.saldo.toLocaleString('pt-BR') || 0} = <strong>${pctMulti.toFixed(2)}%</strong><br>
-                🔴 Renda Variável: R$ ${resultados["Renda Variável"]?.saldo.toLocaleString('pt-BR') || 0} = <strong>${pctRV.toFixed(2)}%</strong><br>
+                <strong>📊 Valores por classe extraídos do PDF:</strong><br>
+                🟢 Pós Fixado: R$ ${resultados["Pós Fixado"].saldo.toLocaleString('pt-BR')} = <strong>${pctPos.toFixed(2)}%</strong><br>
+                🟡 Pré Fixado: R$ ${resultados["Pré Fixado"].saldo.toLocaleString('pt-BR')} = <strong>${pctPre.toFixed(2)}%</strong><br>
+                📈 Inflação: R$ ${resultados["Inflação"].saldo.toLocaleString('pt-BR')} = <strong>${pctInflacao.toFixed(2)}%</strong><br>
+                🔄 Multimercado: R$ ${resultados["Multimercado"].saldo.toLocaleString('pt-BR')} = <strong>${pctMulti.toFixed(2)}%</strong><br>
+                🔴 Renda Variável: R$ ${resultados["Renda Variável"].saldo.toLocaleString('pt-BR')} = <strong>${pctRV.toFixed(2)}%</strong><br>
             `;
             detalhesDiv.classList.add("show");
             
             alert(`✅ Importado!\nPatrimônio: R$ ${totalPatrimonio.toLocaleString('pt-BR')}\n\nPós: ${pctPos.toFixed(1)}%\nPré: ${pctPre.toFixed(1)}%\nInflação: ${pctInflacao.toFixed(1)}%\nMulti: ${pctMulti.toFixed(1)}%\nRV: ${pctRV.toFixed(1)}%`);
             
         } catch (error) {
-            console.error("Erro ao processar PDF:", error);
-            alert("❌ Erro ao processar o PDF. Verifique se o arquivo é válido.");
+            console.error("Erro:", error);
+            mostrarErro("❌ Erro ao processar o PDF: " + error.message);
         } finally {
             loadingDiv.classList.remove("show");
         }
     }
     
+    // ======================== INTERFACE ========================
     function renderInputsAlocacao() {
         const container = document.getElementById("inputs-alocacao");
         container.innerHTML = "";
@@ -296,9 +334,15 @@
     function renderRecomendada() {
         const container = document.getElementById("recomendada-tabela");
         const rec = carteiraRecomendada[perfilAtual];
-        let html = `<table style="width:100%"><thead><tr><th>Classe</th><th>% Alvo</th></tr></thead><tbody>`;
-        classes.forEach(c => { html += `<tr><td>${c}</td><td style="text-align:center">${rec[c]}%</td></tr>`; });
-        html += `</tbody></table><div style="margin-top:12px; background:#e6f7ff; padding:8px; border-radius:12px;">🎯 Perfil ${perfilAtual}</div>`;
+        let html = `<table style="width:100%"><thead><tr style="border-bottom: 2px solid #cbd5e1;"><th style="text-align:left; padding:8px;">Classe</th><th style="text-align:center; padding:8px;">% Alvo</th></tr></thead><tbody>`;
+        classes.forEach(c => { 
+            html += `<tr style="border-bottom: 1px solid #e2e8f0;">
+                        <td style="padding:8px;">${c}</td>
+                        <td style="text-align:center; padding:8px;">${rec[c]}%</td>
+                     </tr>`; 
+        });
+        html += `</tbody></table>`;
+        html += `<div style="margin-top:12px; background:#e6f7ff; padding:8px; border-radius:12px; text-align:center;">🎯 Perfil ${perfilAtual}</div>`;
         container.innerHTML = html;
     }
     
@@ -338,20 +382,17 @@
         setPerfil("Moderado");
         
         document.getElementById("btnAnalisar").onclick = executarAnalise;
-        
         document.getElementById("btnProcessarPdf").onclick = () => {
             const file = document.getElementById("filePdf").files[0];
             if (!file) { 
-                alert("❌ Selecione um arquivo PDF primeiro! Clique em 'Limpar' e depois escolha um novo PDF.");
+                mostrarErro("❌ Selecione um arquivo PDF primeiro!");
                 return; 
             }
             processarPdf(file);
         };
-        
         document.getElementById("btnLimpar").onclick = () => {
-            limparTudo("✅ Tudo resetado! Agora selecione um novo PDF para importar.");
+            limparTudo("✅ Tudo resetado! Agora selecione um novo PDF.");
         };
-        
         document.querySelectorAll(".perfil-btn").forEach(btn => {
             btn.onclick = () => setPerfil(btn.getAttribute("data-perfil"));
         });
