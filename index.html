@@ -540,44 +540,58 @@ async function extrairDadosPDF(file) {
     patrimonioTotal = numBR(patMatch[1]);
   }
   
-  // Buscar os percentuais de cada estratégia
-  const resultados = {
-    "Pós Fixado": null,
-    "Pré Fixado": null,
-    "Inflação": null,
-    "Multimercado": null,
-    "Renda Variável": null
+  // Inicializar resultados
+  let resultados = {
+    "Pós Fixado": 0,
+    "Pré Fixado": 0,
+    "Inflação": 0,
+    "Multimercado": 0,
+    "Renda Variável": 0
   };
   
-  // Padrão: "Estratégia XX,XX%" ou "Estratégia (XX,XX%)"
-  const patterns = [
-    { nome: "Pós Fixado", regex: /P[óo]s?\s+Fixado\s+\(?(\d{1,3},\d{2})%\)?/i },
-    { nome: "Pré Fixado", regex: /Pr[ée]\s+Fixado\s+\(?(\d{1,3},\d{2})%\)?/i },
-    { nome: "Inflação", regex: /Inflação\s+\(?(\d{1,3},\d{2})%\)?/i },
-    { nome: "Multimercado", regex: /Multimercado\s+\(?(\d{1,3},\d{2})%\)?/i },
-    { nome: "Renda Variável", regex: /Renda\s+Vari[áa]vel\s+Brasil\s+\(?(\d{1,3},\d{2})%\)?/i }
-  ];
+  // Padrão do print: "- Pós Fixado (42,61%) R$ 1.242.086,14"
+  // Regex para capturar: Nome (percentual) R$ valor
+  const regex = /[-–]\s*([A-Za-zÀ-Úà-ú\s]+?)\s*\((\d{1,3},\d{2})%\)\s*R\$\s*([\d\.]+,\d{2})/gi;
   
-  for (const pattern of patterns) {
-    const match = textoCompleto.match(pattern.regex);
-    if (match) {
-      resultados[pattern.nome] = parseFloat(match[1].replace(',', '.'));
+  let match;
+  while ((match = regex.exec(textoCompleto)) !== null) {
+    let nome = match[1].trim();
+    let percentual = parseFloat(match[2].replace(',', '.'));
+    let valor = numBR(match[3]);
+    
+    console.log(`Encontrado: ${nome} = ${percentual}% (R$ ${valor})`);
+    
+    // Mapear para as classes
+    if (nome === "Pós Fixado") {
+      resultados["Pós Fixado"] = percentual;
+    } else if (nome === "Pré Fixado") {
+      resultados["Pré Fixado"] = percentual;
+    } else if (nome === "Inflação") {
+      resultados["Inflação"] = percentual;
+    } else if (nome === "Multimercado") {
+      resultados["Multimercado"] = percentual;
+    } else if (nome === "Renda Variável Brasil") {
+      resultados["Renda Variável"] = percentual;
+    } else if (nome === "Alternativo") {
+      // Alternativo soma na Renda Variável (conforme sua regra)
+      resultados["Renda Variável"] += percentual;
     }
   }
   
-  // Se não encontrou Renda Variável Brasil, procura Renda Variável Global
-  if (!resultados["Renda Variável"]) {
-    const rvMatch = textoCompleto.match(/Renda\s+Vari[áa]vel\s+Global\s+\(?(\d{1,3},\d{2})%\)?/i);
-    if (rvMatch) {
-      resultados["Renda Variável"] = parseFloat(rvMatch[1].replace(',', '.'));
+  // Se o regex não funcionou, tenta um padrão mais simples
+  if (resultados["Pós Fixado"] === 0 && resultados["Pré Fixado"] === 0) {
+    const regexSimples = /(Pós Fixado|Pré Fixado|Inflação|Multimercado|Renda Variável Brasil|Alternativo)\s*\((\d{1,3},\d{2})%\)/gi;
+    while ((match = regexSimples.exec(textoCompleto)) !== null) {
+      let nome = match[1].trim();
+      let percentual = parseFloat(match[2].replace(',', '.'));
+      
+      if (nome === "Pós Fixado") resultados["Pós Fixado"] = percentual;
+      else if (nome === "Pré Fixado") resultados["Pré Fixado"] = percentual;
+      else if (nome === "Inflação") resultados["Inflação"] = percentual;
+      else if (nome === "Multimercado") resultados["Multimercado"] = percentual;
+      else if (nome === "Renda Variável Brasil") resultados["Renda Variável"] = percentual;
+      else if (nome === "Alternativo") resultados["Renda Variável"] += percentual;
     }
-  }
-  
-  // Buscar Alternativo e somar ao Multimercado
-  const altMatch = textoCompleto.match(/Alternativo\s+\(?(\d{1,3},\d{2})%\)?/i);
-  if (altMatch && resultados["Multimercado"] !== null) {
-    const alternativo = parseFloat(altMatch[1].replace(',', '.'));
-    resultados["Multimercado"] += alternativo;
   }
   
   return { resultados, patrimonioTotal };
@@ -716,7 +730,7 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
     
     let encontrou = false;
     for (const classe of CLASSES) {
-      if (resultados[classe] !== null && resultados[classe] > 0) {
+      if (resultados[classe] > 0) {
         inputsMap[classe].value = resultados[classe].toFixed(2);
         encontrou = true;
       } else {
