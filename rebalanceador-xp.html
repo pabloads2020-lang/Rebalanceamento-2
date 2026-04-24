@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rebalanceador de Carteira · XP</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root {
+    --bg:        #0e1117;
+    --bg2:       #161b25;
+    --bg3:       #1c2333;
+    --border:    rgba(255,255,255,0.07);
+    --border2:   rgba(255,255,255,0.13);
+    --gold:      #f5c842;
+    --gold2:     #e0a800;
+    --text:      #e8eaf0;
+    --text2:     #8b93a7;
+    --text3:     #555e72;
+    --green:     #2ecc71;
+    --green-bg:  rgba(46,204,113,0.12);
+    --red:       #e74c3c;
+    --red-bg:    rgba(231,76,60,0.12);
+    --amber:     #f39c12;
+    --amber-bg:  rgba(243,156,18,0.12);
+    --blue:      #3498db;
+    --blue-bg:   rgba(52,152,219,0.12);
+    --radius:    12px;
+    --radius-sm: 8px;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+  .header-logo .dot {
+    width: 28px; height: 28px;
+    background: var(--gold);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; color: #000;
+  }
+  .header-date {
+    font-size: 12px;
+    color: var(--text3);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── MAIN LAYOUT ── */
+  .main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem 2rem;
+    margin-bottom: 1.5rem;
+  }
+  .upload-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+  }
+  .upload-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+  .file-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--bg3);
+    border: 1px dashed var(--border2);
+    border-radius: var(--radius-sm);
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--text2);
+    transition: border-color .2s, color .2s;
+    flex: 1;
+    min-width: 200px;
+  }
+  .file-label:hover { border-color: var(--gold); color: var(--gold); }
+  .file-label svg { flex-shrink: 0; }
+  #filePdf { display: none; }
+  #fileNameDisplay {
+    font-size: 12px;
+    color: var(--text2);
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    border: none;
+    transition: all .15s;
+    white-space: nowrap;
+  }
+  .btn-gold {
+    background: var(--gold);
+    color: #000;
+  }
+  .btn-gold:hover { background: var(--gold2); transform: translateY(-1px); }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+  }
+  .btn-ghost:hover { border-color: var(--red); color: var(--red); background: var(--red-bg); }
+  .btn-analyze {
+    background: var(--gold);
+    color: #000;
+    font-size: 14px;
+    font-weight: 600;
+    width: 100%;
+    padding: 12px;
+    justify-content: center;
+    margin-top: 1rem;
+    border-radius: var(--radius);
+  }
+  .btn-analyze:hover { background: var(--gold2); transform: translateY(-1px); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+
+  /* ── STATUS MESSAGES ── */
+  .status-bar {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    margin-top: 1rem;
+  }
+  .status-bar.show { display: flex; }
+  .status-ok   { background: var(--green-bg); color: var(--green); border: 1px solid rgba(46,204,113,0.2); }
+  .status-err  { background: var(--red-bg);   color: var(--red);   border: 1px solid rgba(231,76,60,0.2); }
+  .status-info { background: var(--blue-bg);  color: var(--blue);  border: 1px solid rgba(52,152,219,0.2); }
+
+  .patrimonio-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(245,200,66,0.1);
+    border: 1px solid rgba(245,200,66,0.25);
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--gold);
+    margin-top: .75rem;
+  }
+
+  /* ── PERFIL BUTTONS ── */
+  .perfis-section { margin-bottom: 1.5rem; }
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    margin-bottom: .75rem;
+  }
+  .perfis-row { display: flex; gap: 8px; }
+  .perfil-btn {
+    flex: 1;
+    padding: 10px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: 'DM Sans', sans-serif;
+    cursor: pointer;
+    border: 1px solid var(--border2);
+    background: var(--bg2);
+    color: var(--text2);
+    transition: all .15s;
+    text-align: center;
+  }
+  .perfil-btn:hover { border-color: var(--gold); color: var(--gold); }
+  .perfil-btn.ativo {
+    background: var(--gold);
+    border-color: var(--gold);
+    color: #000;
+    font-weight: 600;
+  }
+
+  /* ── GRID LAYOUT ── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+  @media(max-width:768px){ .grid2 { grid-template-columns: 1fr; } }
+
+  .panel {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+  }
+  .panel-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+    padding-bottom: .75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── CLASSE ROWS ── */
+  .classe-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .classe-row:last-of-type { border-bottom: none; }
+  .classe-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .classe-nome {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text);
+  }
+  .classe-input {
+    width: 70px;
+    padding: 6px 10px;
+    text-align: right;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'DM Mono', monospace;
+    transition: border-color .15s;
+  }
+  .classe-input:focus { outline: none; border-color: var(--gold); }
+  .classe-pct { font-size: 12px; color: var(--text3); width: 14px; }
+
+  .total-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 500;
+    margin-top: .75rem;
+  }
+  .total-ok  { background: var(--green-bg);  color: var(--green);  border: 1px solid rgba(46,204,113,0.2); }
+  .total-err { background: var(--red-bg);    color: var(--red);    border: 1px solid rgba(231,76,60,0.2); }
+
+  /* ── TABELA ALVO ── */
+  .alvo-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .alvo-row:last-of-type { border-bottom: none; }
+  .alvo-nome { flex: 1; font-size: 13px; color: var(--text); }
+  .alvo-pct {
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'DM Mono', monospace;
+    color: var(--gold);
+  }
+  .alvo-bar-wrap {
+    width: 60px;
+    height: 4px;
+    background: var(--bg3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .alvo-bar-fill {
+    height: 100%;
+    background: var(--gold);
+    border-radius: 2px;
+    transition: width .4s ease;
+  }
+
+  /* ── RESULTADO ── */
+  .resultado-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    margin-top: 1.5rem;
+  }
+  .resultado-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 1rem;
+    padding-bottom: .75rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .rec-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .rec-row:last-of-type { border-bottom: none; }
+  .rec-nome { flex: 1; font-size: 13px; color: var(--text); min-width: 100px; }
+  .rec-nums {
+    font-size: 12px;
+    color: var(--text2);
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .b-manter { background: var(--green-bg);  color: var(--green);  border: 1px solid rgba(46,204,113,0.2); }
+  .b-alocar { background: var(--red-bg);    color: var(--red);    border: 1px solid rgba(231,76,60,0.2); }
+  .b-retirar{ background: var(--amber-bg);  color: var(--amber);  border: 1px solid rgba(243,156,18,0.2); }
+
+  .resumo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px,1fr));
+    gap: .75rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+  .resumo-item {
+    background: var(--bg3);
+    border-radius: var(--radius-sm);
+    padding: .75rem 1rem;
+    text-align: center;
+  }
+  .resumo-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+  .resumo-val   { font-size: 20px; font-weight: 600; font-family: 'DM Mono', monospace; }
+
+  /* ── SPINNER ── */
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin .6s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── DEBUG ── */
+  .debug-panel {
+    display: none;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: .75rem 1rem;
+    font-size: 11px;
+    font-family: 'DM Mono', monospace;
+    color: var(--text3);
+    max-height: 200px;
+    overflow-y: auto;
+    margin-top: .75rem;
+    line-height: 1.6;
+  }
+  .debug-panel.show { display: block; }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text3);
+    padding: 2rem;
+    border-top: 1px solid var(--border);
+    margin-top: 2rem;
+  }
+
+  /* ── LEGEND ── */
+  .legend {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: .75rem;
+    padding-top: .75rem;
+    border-top: 1px solid var(--border);
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: var(--text3);
+  }
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+
+  /* ── CLASSE COLORS ── */
+  .c1 { background: #f5c842; }
+  .c2 { background: #3498db; }
+  .c3 { background: #2ecc71; }
+  .c4 { background: #9b59b6; }
+  .c5 { background: #e74c3c; }
+
+  /* ── FADE IN ── */
+  .fade-in { animation: fadeIn .3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  /* ── LOADING OVERLAY ── */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(14,17,23,0.85);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .loading-overlay.show { display: flex; }
+  .loading-spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border2);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+  }
+  .loading-text { font-size: 14px; color: var(--text2); }
+</style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Processando PDF...</div>
+</div>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-logo">
+    <div class="dot">XP</div>
+    Rebalanceador de Carteira
+  </div>
+  <div class="header-date" id="headerDate"></div>
+</header>
+
+<main class="main">
+
+  <!-- Upload -->
+  <div class="upload-card">
+    <div class="upload-title">Importar relatório XP</div>
+    <div class="upload-row">
+      <label class="file-label" for="filePdf">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+          <path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+        <span id="fileNameDisplay">Selecionar arquivo PDF...</span>
+      </label>
+      <input type="file" id="filePdf" accept=".pdf">
+      <button class="btn btn-gold" id="btnImportar">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+        </svg>
+        Importar PDF
+      </button>
+      <button class="btn btn-ghost" id="btnLimpar">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+        </svg>
+        Limpar
+      </button>
+    </div>
+
+    <div id="statusMsg" class="status-bar"></div>
+    <div id="patrimonioTag" style="display:none" class="patrimonio-tag">
+      <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+      </svg>
+      <span id="patrimonioVal"></span>
+    </div>
+    <div id="debugPanel" class="debug-panel"></div>
+  </div>
+
+  <!-- Perfis -->
+  <div class="perfis-section">
+    <div class="section-label">Perfil do investidor</div>
+    <div class="perfis-row" id="perfisRow"></div>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid2">
+    <!-- Coluna esquerda: alocação atual -->
+    <div class="panel">
+      <div class="panel-title">Alocação atual</div>
+      <div id="inputsAtual"></div>
+      <div id="totalBar" class="total-bar total-err">
+        <span>Total</span>
+        <span id="totalVal">0,00%</span>
+      </div>
+    </div>
+
+    <!-- Coluna direita: carteira recomendada -->
+    <div class="panel">
+      <div class="panel-title">Carteira recomendada · <span id="perfilLabel" style="color:var(--gold)">Moderado</span></div>
+      <div id="tabelaAlvo"></div>
+      <button class="btn btn-analyze" id="btnAnalisar">
+        Analisar rebalanceamento
+      </button>
+    </div>
+  </div>
+
+  <!-- Resultado -->
+  <div id="resultadoArea" style="display:none" class="resultado-card fade-in">
+    <div class="resultado-title">Recomendações de rebalanceamento</div>
+    <div id="listaRec"></div>
+    <div class="resumo-grid" id="resumoGrid"></div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Manter (dentro da tolerância)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Alocar mais recursos</div>
+      <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div> Retirar / reduzir posição</div>
+    </div>
+  </div>
+
+</main>
+
+<footer class="footer">
+  Este material tem caráter exclusivamente informativo e não constitui recomendação de investimento.
+</footer>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── DADOS ────────────────────────────────────────────────────
+const PERFIS = {
+  Conservador: {"Pós Fixado":85,"Pré Fixado":15,"Inflação":0,"Multimercado":0,"Renda Variável":0},
+  Moderado:    {"Pós Fixado":54,"Pré Fixado":13,"Inflação":20,"Multimercado":5,"Renda Variável":4},
+  Agressivo:   {"Pós Fixado":44,"Pré Fixado":15,"Inflação":24,"Multimercado":5,"Renda Variável":6}
+};
+const CLASSES = ["Pós Fixado","Pré Fixado","Inflação","Multimercado","Renda Variável"];
+const CORES   = ["c1","c2","c3","c4","c5"];
+const ICONES  = {
+  "Pós Fixado":     "🟡",
+  "Pré Fixado":     "🔵",
+  "Inflação":       "🟢",
+  "Multimercado":   "🟣",
+  "Renda Variável": "🔴"
+};
+
+let perfilAtivo = "Moderado";
+let inputsMap   = {};
+
+// ── UTILITÁRIOS ──────────────────────────────────────────────
+function numBR(s) {
+  if (!s) return 0;
+  return parseFloat(s.toString().replace(/\./g,'').replace(',','.')) || 0;
+}
+
+function fmtBRL(v) {
+  return v.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+function fmtPct(v) {
+  return v.toFixed(2).replace('.',',') + '%';
+}
+
+function log(txt) {
+  const d = document.getElementById('debugPanel');
+  d.classList.add('show');
+  d.innerHTML += txt + '\n';
+}
+
+function showStatus(msg, tipo) {
+  const el = document.getElementById('statusMsg');
+  el.innerHTML = msg;
+  el.className = 'status-bar show status-' + tipo;
+}
+
+function hideStatus() {
+  document.getElementById('statusMsg').classList.remove('show');
+}
+
+// ── EXTRAÇÃO DE PDF ──────────────────────────────────────────
+async function extrairDadosPDF(file) {
+  const ab  = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: ab}).promise;
+
+  let todosTokens = [];
+
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const tc   = await page.getTextContent();
+    const toks = tc.items.map(i => i.str.trim()).filter(s => s.length > 0);
+    todosTokens = todosTokens.concat(toks);
+    log('Pg' + p + ': ' + toks.slice(0,12).join(' | '));
+  }
+
+  const txt = todosTokens.join(' ');
+
+  const estrategias = {
+    "Pós Fixado":     {pct: null, valor: null},
+    "Pré Fixado":     {pct: null, valor: null},
+    "Inflação":       {pct: null, valor: null},
+    "Multimercado":   {pct: null, valor: null},
+    "Renda Variável": {pct: null, valor: null},
+    "Alternativo":    {pct: null, valor: null}
+  };
+
+  // ── Estratégia 1: regex no texto concatenado ──
+  const padroes = [
+    {key:"Pós Fixado",     re:/P[oó]s\s*Fixado\s*\((\d{1,3},\d{2})%\)\s*R\$\s*([\d.]+,\d{2})/i},
+    {key:"Pré Fixado",     re:/Pr[eé]\s*Fixado\s*\((\d{1,3},\d{2})%\)\s*R\$\s*([\d.]+,\d{2})/i},
+    {key:"Inflação",       re:/Infla[cç][aã]o\s*\((\d{1,3},\d{2})%\)\s*R\$\s*([\d.]+,\d{2})/i},
+    {key:"Multimercado",   re:/Multimercado\s*\((\d{1,3},\d{2})%\)\s*R\$\s*([\d.]+,\d{2})/i},
+    {key:"Renda Variável", re:/Renda\s*Vari[aá]vel\s*Brasil\s*\((\d{1,3},\d{2})%\)\s*R\$\s*([\d.]+,\d{2})/i},
+    {key:"Alternativo",    re:/Alternativo\s*\((\d{1,3},\d{2})%\)\s*R\$\s*([\d.]+,\d{2})/i}
+  ];
+
+  for (const p of padroes) {
+    const m = txt.match(p.re);
+    if (m) {
+      estrategias[p.key].pct   = parseFloat(m[1].replace(',','.'));
+      estrategias[p.key].valor = numBR(m[2]);
+      log('[P1] ' + p.key + ': ' + m[1] + '% — R$ ' + m[2]);
+    }
+  }
+
+  // ── Estratégia 2: varredura token a token ──
+  const achouAlgo = Object.values(estrategias).some(e => e.pct !== null);
+  if (!achouAlgo) {
+    log('Padrão 1 sem resultado — varredura token...');
+    const mapeamento = [
+      {key:"Pós Fixado",     check: (t,n) => (t==='Pós'||t==='Pos') && (n||'').startsWith('Fix')},
+      {key:"Pré Fixado",     check: (t,n) => (t==='Pré'||t==='Pre') && (n||'').startsWith('Fix')},
+      {key:"Inflação",       check: (t)   => /^infla/i.test(t)},
+      {key:"Multimercado",   check: (t)   => /^multimercado$/i.test(t)},
+      {key:"Renda Variável", check: (t,n) => t==='Renda' && (n||'').startsWith('Vari')},
+      {key:"Alternativo",    check: (t)   => /^alternativo$/i.test(t)}
+    ];
+
+    for (let i = 0; i < todosTokens.length; i++) {
+      const tok  = todosTokens[i];
+      const prox = todosTokens[i+1] || '';
+
+      for (const mp of mapeamento) {
+        if (!estrategias[mp.key].pct && mp.check(tok, prox)) {
+          // Procura percentual nos próximos 15 tokens
+          for (let j = i+1; j < Math.min(i+16, todosTokens.length); j++) {
+            const t   = todosTokens[j];
+            const mP  = t.match(/\(?(\d{1,3},\d{2})%\)?/);
+            if (mP) {
+              estrategias[mp.key].pct = parseFloat(mP[1].replace(',','.'));
+              log('[P2] ' + mp.key + ': ' + estrategias[mp.key].pct + '%');
+              // Procura valor R$ nos próximos 5 tokens
+              for (let k = j+1; k < Math.min(j+6, todosTokens.length); k++) {
+                const tv = todosTokens[k];
+                if (/^[\d.]+,\d{2}$/.test(tv)) {
+                  estrategias[mp.key].valor = numBR(tv);
+                  log('[P2] ' + mp.key + ': R$ ' + tv);
+                  break;
+                }
+              }
+              break;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // ── Patrimônio total ──
+  let patrimonioTotal = 0;
+  const mPatr = txt.match(/PATRIM[OÔ]NIO\s*TOTAL\s*BRUTO[:\s]*R\$\s*([\d.]+,\d{2})/i);
+  if (mPatr) {
+    patrimonioTotal = numBR(mPatr[1]);
+    log('[Patrimônio] R$ ' + mPatr[1]);
+  }
+
+  // Alternativo → soma em Multimercado
+  if (estrategias["Alternativo"].valor) {
+    estrategias["Multimercado"].valor =
+      (estrategias["Multimercado"].valor || 0) + estrategias["Alternativo"].valor;
+    estrategias["Multimercado"].pct = null;
+    log('[Alternativo] somado ao Multimercado');
+  }
+
+  // Recalcular percentuais a partir dos valores, se necessário
+  const totalValores = CLASSES.reduce((s,c) => s + (estrategias[c]?.valor||0), 0);
+  if (totalValores > 0) {
+    for (const c of CLASSES) {
+      if (estrategias[c].valor && !estrategias[c].pct) {
+        estrategias[c].pct = (estrategias[c].valor / totalValores) * 100;
+      }
+    }
+  }
+
+  return {estrategias, patrimonioTotal: patrimonioTotal || totalValores};
+}
+
+// ── RENDER INPUTS ────────────────────────────────────────────
+function renderInputs() {
+  const c = document.getElementById('inputsAtual');
+  c.innerHTML = '';
+  CLASSES.forEach((cl, idx) => {
+    const row = document.createElement('div');
+    row.className = 'classe-row';
+    row.innerHTML = `
+      <div class="classe-dot ${CORES[idx]}"></div>
+      <span class="classe-nome">${cl}</span>
+      <input class="classe-input" type="number" step="any" min="0" max="100"
+             value="0" id="inp_${idx}" autocomplete="off">
+      <span class="classe-pct">%</span>`;
+    c.appendChild(row);
+    inputsMap[cl] = row.querySelector('input');
+    inputsMap[cl].addEventListener('input', atualizarTotal);
+  });
+  atualizarTotal();
+}
+
+function atualizarTotal() {
+  let t = 0;
+  CLASSES.forEach(c => { t += parseFloat(inputsMap[c]?.value||0)||0; });
+  const el  = document.getElementById('totalBar');
+  const val = document.getElementById('totalVal');
+  val.textContent = fmtPct(t);
+  if (Math.abs(t - 100) < 0.1) {
+    el.className = 'total-bar total-ok';
+  } else {
+    el.className = 'total-bar total-err';
+  }
+}
+
+// ── RENDER TABELA ALVO ───────────────────────────────────────
+function renderAlvo() {
+  const rec = PERFIS[perfilAtivo];
+  document.getElementById('perfilLabel').textContent = perfilAtivo;
+  const el = document.getElementById('tabelaAlvo');
+  el.innerHTML = CLASSES.map((c, idx) => `
+    <div class="alvo-row">
+      <div class="classe-dot ${CORES[idx]}"></div>
+      <span class="alvo-nome">${c}</span>
+      <div class="alvo-bar-wrap">
+        <div class="alvo-bar-fill" style="width:${rec[c]}%"></div>
+      </div>
+      <span class="alvo-pct">${rec[c]}%</span>
+    </div>`).join('');
+}
+
+// ── RENDER PERFIS ────────────────────────────────────────────
+function renderPerfis() {
+  const el = document.getElementById('perfisRow');
+  el.innerHTML = Object.keys(PERFIS).map(p => `
+    <button class="perfil-btn ${p===perfilAtivo?'ativo':''}" data-p="${p}">
+      ${p==='Conservador'?'🛡 ':p==='Moderado'?'⚖ ':'🚀 '}${p}
+    </button>`).join('');
+  el.querySelectorAll('.perfil-btn').forEach(b => b.addEventListener('click', () => {
+    perfilAtivo = b.dataset.p;
+    renderPerfis();
+    renderAlvo();
+    document.getElementById('resultadoArea').style.display = 'none';
+  }));
+}
+
+// ── ANALISAR ─────────────────────────────────────────────────
+function analisar() {
+  let total = 0;
+  const atual = {};
+  CLASSES.forEach(c => { atual[c] = parseFloat(inputsMap[c]?.value||0)||0; total += atual[c]; });
+
+  if (Math.abs(total - 100) > 0.1) {
+    showStatus('O total da alocação atual deve ser 100% (atual: ' + fmtPct(total) + ')', 'err');
+    return;
+  }
+
+  const alvo = PERFIS[perfilAtivo];
+  let nManter = 0, nAlocar = 0, nRetirar = 0;
+
+  const html = CLASSES.map((c, idx) => {
+    const diff = alvo[c] - atual[c];
+    let badgeClass, label;
+    if      (Math.abs(diff) < 0.05) { badgeClass = 'b-manter'; label = '✓ Manter';                       nManter++;  }
+    else if (diff > 0)               { badgeClass = 'b-alocar'; label = '↑ Alocar +' + fmtPct(diff);     nAlocar++;  }
+    else                             { badgeClass = 'b-retirar';label = '↓ Retirar ' + fmtPct(Math.abs(diff)); nRetirar++; }
+
+    return `<div class="rec-row">
+      <div class="classe-dot ${CORES[idx]}"></div>
+      <span class="rec-nome">${c}</span>
+      <span class="rec-nums">Atual ${fmtPct(atual[c])} → Alvo ${alvo[c]}%</span>
+      <span class="badge ${badgeClass}">${label}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('listaRec').innerHTML = html;
+  document.getElementById('resumoGrid').innerHTML = `
+    <div class="resumo-item">
+      <div class="resumo-label">Manter</div>
+      <div class="resumo-val" style="color:var(--green)">${nManter}</div>
+    </div>
+    <div class="resumo-item">
+      <div class="resumo-label">Alocar</div>
+      <div class="resumo-val" style="color:var(--red)">${nAlocar}</div>
+    </div>
+    <div class="resumo-item">
+      <div class="resumo-label">Retirar</div>
+      <div class="resumo-val" style="color:var(--amber)">${nRetirar}</div>
+    </div>
+    <div class="resumo-item">
+      <div class="resumo-label">Perfil</div>
+      <div class="resumo-val" style="color:var(--gold);font-size:14px">${perfilAtivo}</div>
+    </div>`;
+
+  const area = document.getElementById('resultadoArea');
+  area.style.display = 'block';
+  area.classList.remove('fade-in');
+  void area.offsetWidth;
+  area.classList.add('fade-in');
+  area.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+// ── EVENTOS ──────────────────────────────────────────────────
+document.getElementById('filePdf').addEventListener('change', function() {
+  const f = this.files[0];
+  document.getElementById('fileNameDisplay').textContent = f ? f.name : 'Selecionar arquivo PDF...';
+});
+
+document.getElementById('btnImportar').addEventListener('click', async () => {
+  const file = document.getElementById('filePdf').files[0];
+  if (!file) { showStatus('Selecione um arquivo PDF primeiro.', 'err'); return; }
+
+  document.getElementById('debugPanel').innerHTML = '';
+  document.getElementById('debugPanel').classList.remove('show');
+  document.getElementById('patrimonioTag').style.display = 'none';
+
+  const overlay = document.getElementById('loadingOverlay');
+  overlay.classList.add('show');
+
+  try {
+    const {estrategias, patrimonioTotal} = await extrairDadosPDF(file);
+
+    let encontrou = false;
+    CLASSES.forEach(c => {
+      const pct = estrategias[c]?.pct;
+      if (pct != null && pct >= 0) {
+        inputsMap[c].value = pct.toFixed(2);
+        if (pct > 0) encontrou = true;
+      }
+    });
+    atualizarTotal();
+
+    if (!encontrou) {
+      showStatus('Não foi possível extrair os dados. Verifique o formato do PDF.', 'err');
+    } else {
+      showStatus('PDF importado com sucesso!', 'ok');
+      if (patrimonioTotal > 0) {
+        document.getElementById('patrimonioVal').textContent =
+          'Patrimônio total: R$ ' + fmtBRL(patrimonioTotal);
+        document.getElementById('patrimonioTag').style.display = 'inline-flex';
+      }
+    }
+  } catch(e) {
+    showStatus('Erro ao processar PDF: ' + e.message, 'err');
+    log('ERRO: ' + e.message);
+  } finally {
+    overlay.classList.remove('show');
+  }
+});
+
+document.getElementById('btnLimpar').addEventListener('click', () => {
+  CLASSES.forEach(c => { if (inputsMap[c]) inputsMap[c].value = '0'; });
+  atualizarTotal();
+  document.getElementById('resultadoArea').style.display = 'none';
+  document.getElementById('statusMsg').classList.remove('show');
+  document.getElementById('patrimonioTag').style.display = 'none';
+  document.getElementById('debugPanel').innerHTML = '';
+  document.getElementById('debugPanel').classList.remove('show');
+  document.getElementById('filePdf').value = '';
+  document.getElementById('fileNameDisplay').textContent = 'Selecionar arquivo PDF...';
+});
+
+document.getElementById('btnAnalisar').addEventListener('click', analisar);
+
+// ── INIT ─────────────────────────────────────────────────────
+function init() {
+  const now = new Date();
+  document.getElementById('headerDate').textContent =
+    now.toLocaleDateString('pt-BR', {day:'2-digit',month:'long',year:'numeric'});
+
+  renderInputs();
+  renderPerfis();
+  renderAlvo();
+}
+
+init();
+</script>
+</body>
+</html>
