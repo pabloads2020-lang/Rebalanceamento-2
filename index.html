@@ -189,71 +189,66 @@ async function extrairDadosPDF(file) {
     tc.items.forEach(it => raw.push(it.str));
   }
 
+  // Normalização agressiva para limpar tokens colados e acentos
   function norm(s) {
-    return s.normalize('NFD').replace(/[\u0300-\u036f]/g, "") // Remove acentos para busca robusta
-            .replace(/\uFB00/g, 'ff').replace(/\uFB01/g, 'fi').replace(/\uFB02/g, 'fl')
-            .replace(/\uFB03/g, 'ffi').replace(/\uFB04/g, 'ffl').replace(/\u00A0/g, ' ').trim();
+    return s.normalize('NFD').replace(/[\u0300-\u036f]/g, "")
+            .replace(/[()]/g, " ") // Remove parênteses para evitar textos como "Inflacao(20%)"
+            .trim();
   }
   
   const T_Original = raw.filter(s => s.trim().length > 0);
   const T_Norm = T_Original.map(norm);
-  dbg('Tokens processados: ' + T_Original.length);
+  dbg('Total de tokens: ' + T_Original.length);
 
   function lerPct(i) {
-    // Tenta encontrar o padrão (XX,XX%) nos tokens seguintes
-    for (let k = i + 1; k < i + 6 && k < T_Original.length; k++) {
-      const match = T_Original[k].match(/(\d+)[.,](\d+)\s*%/);
-      if (match) return parseFloat(match[1] + '.' + match[2]);
-      if (T_Original[k] === '(' && T_Original[k+4] === '%)') {
-         return parseFloat(T_Original[k+1] + '.' + T_Original[k+3]);
-      }
+    for (let k = i + 1; k < i + 12 && k < T_Original.length; k++) {
+      const token = T_Original[k];
+      const match = token.match(/(\d+)[.,](\d+)/);
+      if (match && token.includes('%')) return parseFloat(match[1] + '.' + match[2]);
     }
     return null;
   }
 
   function lerValor(i) {
-    for (let k = i + 1; k < i + 12 && k < T_Original.length; k++) {
-      if (T_Original[k].includes('R$')) {
-        let textoValor = T_Original[k].replace('R$', '').trim();
-        // Se o valor estiver quebrado ou em tokens próximos
-        if (!textoValor && T_Original[k+1]) textoValor = T_Original[k+1];
+    // Janela maior de busca para valores que ficam em colunas distantes (XP)
+    for (let k = i + 1; k < i + 20 && k < T_Original.length; k++) {
+      const token = T_Original[k];
+      if (token.includes('R$')) {
+        let vStr = token.replace('R$', '').replace(/\s/g, '').trim();
+        // Se o número estiver no próximo token (ex: ["R$", "1.234,56"])
+        if (!vStr && T_Original[k+1]) vStr = T_Original[k+1].replace(/\s/g, '').trim();
         
-        const num = textoValor.replace(/\./g, '').replace(',', '.');
-        if (!isNaN(parseFloat(num))) return parseFloat(num);
+        const num = vStr.replace(/\./g, '').replace(',', '.');
+        if (!isNaN(parseFloat(num)) && num.includes('.')) return parseFloat(num);
       }
     }
     return null;
   }
 
   const NOMES = [
-    { re: /Pos Fixado/i,           destino: "Pós Fixado" },
-    { re: /Pre Fixado/i,           destino: "Pré Fixado" },
-    { re: /Inflacao/i,             destino: "Inflação" },
-    { re: /Multimercado/i,         destino: "Multimercado" },
-    { re: /Renda Variavel Brasil/i, destino: "Renda Variável" },
-    { re: /Alternativo/i,          destino: "Renda Variável" }
+    { re: /Pos Fixado/i,   destino: "Pós Fixado" },
+    { re: /Pre Fixado/i,   destino: "Pré Fixado" },
+    { re: /Inflacao/i,     destino: "Inflação" },
+    { re: /Multimercado/i, destino: "Multimercado" },
+    { re: /Renda Variavel/i, destino: "Renda Variável" }
   ];
 
   const res = {};
-
-  for (let i = 0; i < T_Norm.length; i++) {
-    for (const { re, destino } of NOMES) {
-      if (re.test(T_Norm[i])) {
+  T_Norm.forEach((txt, i) => {
+    NOMES.forEach(({ re, destino }) => {
+      if (re.test(txt)) {
         const pct = lerPct(i);
         const val = lerValor(i);
-
-        if (pct !== null) {
-          if (!res[destino]) res[destino] = { pct: 0, val: 0 };
-          res[destino].pct += pct;
-          if (val) res[destino].val += val;
-          dbg(`[Detectado] ${destino}: ${pct}% | R$ ${val || '?'}`);
-          break; 
+        // Só salva se encontrou um percentual e ainda não preencheu essa classe
+        if (pct !== null && !res[destino]) {
+          res[destino] = { pct, val: val || 0 };
+          dbg(`[OK] ${destino}: ${pct}% | R$ ${val || '---'}`);
         }
       }
-    }
-  }
+    });
+  });
 
-  // Captura do Patrimônio Bruto (Melhorado)
+  // Captura do Patrimônio Bruto (Geralmente na pág 2)
   let patrimonio = 0;
   for (let i = 0; i < T_Norm.length; i++) {
     if (T_Norm[i] === "PATRIMONIO" && T_Norm[i+1] === "TOTAL" && T_Norm[i+2] === "BRUTO") {
@@ -319,7 +314,8 @@ function analisar() {
     <div class="resumo-item"><div class="resumo-label">Perfil</div><div class="resumo-val" style="color:var(--gold);font-size:14px">${perfilAtivo}</div></div>`;
   
   const area = document.getElementById('resultArea');
-  area.style.display = 'block'; area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  area.style.display = 'block'; 
+  area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 document.getElementById('filePdf').addEventListener('change', function() {
@@ -330,7 +326,8 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
   const file = document.getElementById('filePdf').files[0];
   if (!file) { setStatus('Selecione um arquivo PDF primeiro.', 'err'); return; }
   
-  document.getElementById('debugBox').textContent = ''; 
+  const dbgEl = document.getElementById('debugBox'); dbgEl.textContent = ''; dbgEl.classList.remove('show');
+  document.getElementById('patrimTag').classList.remove('show');
   document.getElementById('overlay').classList.add('show');
   
   try {
@@ -338,7 +335,7 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
     const encontrados = CLASSES.filter(c => res[c]?.pct != null).length;
     
     if (encontrados === 0) {
-      setStatus('Não foi possível encontrar as classes de ativos. Verifique se o PDF é o relatório de performance da XP.', 'err');
+      setStatus('Não foi possível extrair os dados. Verifique o PDF.', 'err');
     } else {
       CLASSES.forEach(c => { 
         if (inputsMap[c]) {
@@ -346,14 +343,14 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
         }
       });
       atualizarTotal();
-      setStatus(`Sucesso! ${encontrados} classes identificadas.`, 'ok');
+      setStatus(`PDF importado com sucesso! ${encontrados} classes encontradas.`, 'ok');
       if (patrimonio > 0) {
         document.getElementById('patrimVal').textContent = 'Patrimônio: ' + fmtBRL(patrimonio);
         document.getElementById('patrimTag').classList.add('show');
       }
     }
   } catch (e) {
-    setStatus('Erro ao processar: ' + e.message, 'err');
+    setStatus('Erro: ' + e.message, 'err'); dbg('ERRO: ' + e.message);
   } finally {
     document.getElementById('overlay').classList.remove('show');
   }
@@ -365,6 +362,8 @@ document.getElementById('btnLimpar').addEventListener('click', () => {
   document.getElementById('resultArea').style.display = 'none';
   document.getElementById('status').classList.remove('show');
   document.getElementById('patrimTag').classList.remove('show');
+  document.getElementById('debugBox').textContent = '';
+  document.getElementById('debugBox').classList.remove('show');
   document.getElementById('filePdf').value = '';
   document.getElementById('fileName').textContent = 'Selecionar arquivo PDF...';
 });
