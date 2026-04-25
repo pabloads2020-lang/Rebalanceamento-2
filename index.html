@@ -63,9 +63,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .rec-nome{flex:1;font-size:13px;min-width:100px}
 .rec-nums{font-size:12px;color:var(--text2);font-family:'DM Mono',monospace}
 .badge{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}
-.b-manter{background:var(--green-bg);color:var(--green);border:1px solid rgba(46,204,113,.2)}
-.b-alocar{background:var(--red-bg);color:var(--red);border:1px solid rgba(231,76,60,.2)}
-.b-retirar{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(243,156,18,.2)}
+
+/* CORES CORRIGIDAS - ALTERAÇÃO ESTÉTICA */
+.b-manter{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(243,156,18,.3)}  /* Amarelo/Âmbar */
+.b-alocar{background:var(--green-bg);color:var(--green);border:1px solid rgba(46,204,113,.3)} /* Verde */
+.b-retirar{background:var(--red-bg);color:var(--red);border:1px solid rgba(231,76,60,.3)}    /* Vermelho */
+
 .resumo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)}
 @media(max-width:500px){.resumo-grid{grid-template-columns:repeat(2,1fr)}}
 .resumo-item{background:var(--bg3);border-radius:8px;padding:.75rem;text-align:center}
@@ -224,11 +227,10 @@ async function extrairDadosPDF(file) {
     return parseFloat(numero.replace(/\./g, '').replace(',', '.'));
   }
 
-  // NOMES COM REGEX CORRIGIDO PARA INFLACAO
   const NOMES = [
     { re: /^P[oó]s Fixado$/i,           key: "Pós Fixado", destino: "Pós Fixado" },
     { re: /^Pr[eé] Fixado$/i,           key: "Pré Fixado", destino: "Pré Fixado" },
-    { re: /^Inflação$/i,                key: "Inflação", destino: "Inflação" },      // ← CORRIGIDO
+    { re: /^Inflação$/i,                key: "Inflação", destino: "Inflação" },
     { re: /^Multimercado$/i,            key: "Multimercado", destino: "Multimercado" },
     { re: /^Renda Vari[aá]vel Brasil$/i, key: "Renda Variável Brasil", destino: "Renda Variável" },
     { re: /^Alternativo$/i,             key: "Alternativo", destino: "Renda Variável" }
@@ -266,7 +268,6 @@ async function extrairDadosPDF(file) {
     }
   }
 
-  // Recalcular percentuais
   const totVal = CLASSES.reduce((s, c) => s + (res[c]?.val || 0), 0);
   if (totVal > 0) {
     for (const c of CLASSES) {
@@ -277,7 +278,6 @@ async function extrairDadosPDF(file) {
     }
   }
 
-  // Patrimônio
   let patrimonio = totVal;
   for (let i = 0; i < T.length - 3; i++) {
     if (/PATRIM/i.test(T[i]) && /TOTAL/i.test(T[i + 1]) && /BRUTO/i.test(T[i + 2])) {
@@ -338,9 +338,9 @@ function analisar() {
     return `<div class="rec-row"><div class="dot8 ${CORES[i]}"></div><span class="rec-nome">${c}</span><span class="rec-nums">${fmtPct(atual[c])} → ${alvo[c]}%</span><span class="badge ${bc}">${label}</span></div>`;
   }).join('');
   document.getElementById('resumoGrid').innerHTML = `
-    <div class="resumo-item"><div class="resumo-label">Manter</div><div class="resumo-val" style="color:var(--green)">${nM}</div></div>
-    <div class="resumo-item"><div class="resumo-label">Alocar</div><div class="resumo-val" style="color:var(--red)">${nA}</div></div>
-    <div class="resumo-item"><div class="resumo-label">Retirar</div><div class="resumo-val" style="color:var(--amber)">${nR}</div></div>
+    <div class="resumo-item"><div class="resumo-label">Manter</div><div class="resumo-val" style="color:var(--amber)">${nM}</div></div>
+    <div class="resumo-item"><div class="resumo-label">Alocar</div><div class="resumo-val" style="color:var(--green)">${nA}</div></div>
+    <div class="resumo-item"><div class="resumo-label">Retirar</div><div class="resumo-val" style="color:var(--red)">${nR}</div></div>
     <div class="resumo-item"><div class="resumo-label">Perfil</div><div class="resumo-val" style="color:var(--gold);font-size:14px">${perfilAtivo}</div></div>`;
   const area = document.getElementById('resultArea');
   area.style.display = 'block'; area.classList.remove('fade-in'); void area.offsetWidth; area.classList.add('fade-in');
