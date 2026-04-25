@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rebalanceador de Carteira · XP (8 Classes)</title>
+<title>Rebalanceador de Carteira · XP (8 Classes + Valores)</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
@@ -99,6 +99,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .rec-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
 .rec-nome { flex: 1; font-size: 13px; min-width: 110px; }
 .rec-nums { font-size: 12px; color: var(--text2); font-family: 'DM Mono', monospace; }
+.rec-valor { font-size: 12px; font-weight: 600; font-family: 'DM Mono', monospace; min-width: 110px; color: var(--gold); }
 .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
 .b-manter { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(243, 156, 18, 0.3); }
 .b-alocar { background: var(--green-bg); color: var(--green); border: 1px solid rgba(46, 204, 113, 0.3); }
@@ -226,6 +227,7 @@ const CORES = ["c0","c1","c2","c3","c4","c5","c6","c7"];
 
 let perfilAtivo = "Moderado";
 let inputsMap = {};
+let patrimonioTotal = 0;
 
 function fmtPct(v) { return v.toFixed(2).replace('.', ',') + ' %'; }
 function fmtBRL(v) { return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2}); }
@@ -248,7 +250,6 @@ async function extrairDadosPDF(file) {
     const tc = await page.getTextContent();
     const pageText = tc.items.map(item => item.str).join(' ');
     textoCompleto += pageText + '\n';
-    dbg(`📄 Página ${p}: "${pageText.substring(0, 60)}..."`);
   }
   
   // Encontrar seção de Estratégias (páginas 5-6)
@@ -258,14 +259,9 @@ async function extrairDadosPDF(file) {
   
   if (idxEstrategias !== -1) {
     secaoAlvo = textoCompleto.substring(idxEstrategias, idxEstrategias + 2000);
-    dbg('✅ Seção "Estratégias" encontrada!');
   } else if (idxComposicao !== -1) {
     secaoAlvo = textoCompleto.substring(idxComposicao, idxComposicao + 2000);
-    dbg('✅ Seção "COMPOSIÇÃO" encontrada!');
   }
-  
-  dbg('\n--- CONTEÚDO DA SEÇÃO DE ESTRATÉGIAS ---');
-  dbg(secaoAlvo.substring(0, 1200));
   
   // Função para extrair percentuais (suporta espaços dentro do nome e nos números)
   function extrairPct(nome) {
@@ -285,18 +281,7 @@ async function extrairDadosPDF(file) {
   const pctMulti = extrairPct('Multimercado');
   const pctRV = extrairPct('Renda Variável Brasil');
   const pctAlternativo = extrairPct('Alternativo');
-  
-  // Renda Variável Global (quando disponível no PDF)
   const pctRVGlobal = extrairPct('Renda Variável Global');
-  
-  dbg(`\n📊 RESULTADOS DA EXTRAÇÃO:`);
-  dbg(`Renda Fixa Pós: ${pctPos !== null ? pctPos + '%' : '❌'}`);
-  dbg(`Renda Fixa Pré: ${pctPre !== null ? pctPre + '%' : '❌'}`);
-  dbg(`Renda Fixa Inflação: ${pctInf !== null ? pctInf + '%' : '❌'}`);
-  dbg(`Multiestratégia: ${pctMulti !== null ? pctMulti + '%' : '❌'}`);
-  dbg(`Renda Variável: ${pctRV !== null ? pctRV + '%' : '❌'}`);
-  dbg(`Renda Variável Global: ${pctRVGlobal !== null ? pctRVGlobal + '%' : '❌'}`);
-  dbg(`Alternativo: ${pctAlternativo !== null ? pctAlternativo + '%' : '❌'}`);
   
   // Mapear para as classes do sistema
   const res = {
@@ -315,7 +300,6 @@ async function extrairDadosPDF(file) {
   const patMatch = textoCompleto.match(/PATRIM[OÔ]NIO\s*TOTAL\s*BRUTO[:\s]*R\$\s*([\d\.]+,\d{2})/i);
   if (patMatch) {
     patrimonio = parseFloat(patMatch[1].replace(/\./g, '').replace(',', '.'));
-    dbg(`💰 Patrimônio: R$ ${patrimonio.toLocaleString('pt-BR')}`);
   }
   
   return { res, patrimonio };
@@ -390,6 +374,8 @@ function analisar() {
   
   const html = CLASSES.map((c, i) => {
     const diff = alvo[c] - atual[c];
+    const valorMovimentar = Math.abs(diff * patrimonioTotal / 100);
+    
     let badgeClass, label;
     if (Math.abs(diff) < 0.05) {
       badgeClass = 'b-manter';
@@ -404,11 +390,16 @@ function analisar() {
       label = `↓ Retirar ${fmtPct(Math.abs(diff))}`;
       nRetirar++;
     }
+    
+    // Se for Manter, mostra R$ 0,00
+    const valorDisplay = Math.abs(diff) < 0.05 ? 'R$ 0,00' : fmtBRL(valorMovimentar);
+    
     return `
       <div class="rec-row">
         <div class="dot8 ${CORES[i]}"></div>
         <span class="rec-nome">${c}</span>
         <span class="rec-nums">${fmtPct(atual[c])} → ${alvo[c]}%</span>
+        <span class="rec-valor">${valorDisplay}</span>
         <span class="badge ${badgeClass}">${label}</span>
       </div>
     `;
@@ -439,6 +430,7 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
   document.getElementById('overlay').classList.add('show');
   try {
     const { res, patrimonio } = await extrairDadosPDF(file);
+    patrimonioTotal = patrimonio;
     let encontrou = false;
     for (const classe of CLASSES) {
       if (res[classe] && res[classe].pct !== null && res[classe].pct > 0) {
@@ -449,8 +441,8 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
     atualizarTotal();
     if (encontrou) {
       setStatus('✅ PDF importado com sucesso!', 'ok');
-      if (patrimonio > 0) {
-        document.getElementById('patrimVal').innerHTML = fmtBRL(patrimonio);
+      if (patrimonioTotal > 0) {
+        document.getElementById('patrimVal').innerHTML = fmtBRL(patrimonioTotal);
         document.getElementById('patrimTag').classList.add('show');
       }
     } else {
@@ -465,6 +457,7 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
 
 document.getElementById('btnLimpar').addEventListener('click', () => {
   CLASSES.forEach(c => { if (inputsMap[c]) inputsMap[c].value = '0'; });
+  patrimonioTotal = 0;
   atualizarTotal();
   document.getElementById('resultArea').style.display = 'none';
   document.getElementById('status').classList.remove('show');
