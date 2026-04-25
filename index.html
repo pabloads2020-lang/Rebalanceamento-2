@@ -89,7 +89,6 @@ body {
   min-height: 100vh;
 }
 
-/* HEADER */
 .header {
   background: var(--header-bg);
   border-bottom: 1px solid var(--header-border);
@@ -267,11 +266,6 @@ body {
   background: var(--red-bg);
   color: var(--red);
   border: 1px solid rgba(231, 76, 60, 0.25);
-}
-.status-info {
-  background: var(--blue-bg);
-  color: var(--blue);
-  border: 1px solid rgba(52, 152, 219, 0.25);
 }
 .patrim-tag {
   display: none;
@@ -678,33 +672,6 @@ body {
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ===== MODO CLARO/ESCURO =====
-function initTheme() {
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'light') {
-    document.body.classList.add('light');
-    document.getElementById('themeToggle').textContent = '☀️';
-  } else {
-    document.body.classList.remove('light');
-    document.getElementById('themeToggle').textContent = '🌙';
-  }
-}
-
-function toggleTheme() {
-  const body = document.body;
-  const toggleBtn = document.getElementById('themeToggle');
-  if (body.classList.contains('light')) {
-    body.classList.remove('light');
-    localStorage.setItem('theme', 'dark');
-    toggleBtn.textContent = '🌙';
-  } else {
-    body.classList.add('light');
-    localStorage.setItem('theme', 'light');
-    toggleBtn.textContent = '☀️';
-  }
-}
-
-// ===== CONSTANTES =====
 const PERFIS = {
   Conservador: { "Pós Fixado": 85, "Pré Fixado": 15, "Inflação": 0, "Multimercado": 0, "Renda Variável": 0 },
   Moderado: { "Pós Fixado": 54, "Pré Fixado": 13, "Inflação": 20, "Multimercado": 5, "Renda Variável": 8 },
@@ -719,7 +686,7 @@ let inputsMap = {};
 
 function fmtPct(v) { return v.toFixed(2).replace('.', ',') + ' %'; }
 function fmtBRL(v) { return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2}); }
-function setStatus(msg, tipo) { const el = document.getElementById('status'); el.innerHTML = msg; el.className = 'status show status-' + tipo; }
+function setStatus(msg, tipo) { const el = document.getElementById('status'); el.innerHTML = msg; el.className = 'status show status-' + tipo; setTimeout(() => { if (el.classList.contains('show')) el.classList.remove('show'); }, 4000); }
 function dbg(txt) { const el = document.getElementById('debugBox'); el.classList.add('show'); el.textContent += txt + '\n'; }
 function atualizarTotal() {
   let t = 0;
@@ -728,114 +695,107 @@ function atualizarTotal() {
   document.getElementById('totalBar').className = 'total-bar ' + (Math.abs(t - 100) < 0.1 ? 'total-ok' : 'total-err');
 }
 
+// ===== FUNÇÃO INTELIGENTE PARA EXTRAIR INFLAÇÃO =====
+function extrairInfeccaoInteligente(textoCompleto) {
+  // ESTRATÉGIA 1: Busca exata
+  let match = textoCompleto.match(/Inflação\s*\((\d{1,3},\d{2})%\)/i);
+  if (match) return parseFloat(match[1].replace(',', '.'));
+  
+  // ESTRATÉGIA 2: Busca com caracteres estranhos (fl, ﬁ, etc)
+  match = textoCompleto.match(/Inﬂação\s*\((\d{1,3},\d{2})%\)/i);
+  if (match) return parseFloat(match[1].replace(',', '.'));
+  
+  // ESTRATÉGIA 3: Busca sem acento
+  match = textoCompleto.match(/Inflacao\s*\((\d{1,3},\d{2})%\)/i);
+  if (match) return parseFloat(match[1].replace(',', '.'));
+  
+  // ESTRATÉGIA 4: Busca com espaço entre Infl e ação
+  match = textoCompleto.match(/Inﬂ\s*ação\s*\((\d{1,3},\d{2})%\)/i);
+  if (match) return parseFloat(match[1].replace(',', '.'));
+  
+  // ESTRATÉGIA 5: Busca qualquer coisa que comece com Inf e tenha (X,X%)
+  match = textoCompleto.match(/Inf[a-zÀ-Úà-ú]*\s*\((\d{1,3},\d{2})%\)/i);
+  if (match) {
+    const pct = parseFloat(match[1].replace(',', '.'));
+    if (pct > 0 && pct < 100) return pct;
+  }
+  
+  // ESTRATÉGIA 6: Busca na lista de tokens (último recurso)
+  const idxInflacao = textoCompleto.toLowerCase().indexOf('inflação');
+  if (idxInflacao !== -1) {
+    const trecho = textoCompleto.substring(idxInflacao, idxInflacao + 50);
+    const pctMatch = trecho.match(/\((\d{1,3},\d{2})%\)/);
+    if (pctMatch) return parseFloat(pctMatch[1].replace(',', '.'));
+  }
+  
+  return null;
+}
+
 async function extrairDadosPDF(file) {
   const ab = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
-
-  let raw = [];
+  
+  let textoCompleto = '';
   for (let p = 1; p <= pdf.numPages; p++) {
-    const tc = await (await pdf.getPage(p)).getTextContent();
-    tc.items.forEach(it => raw.push(it.str));
+    const page = await pdf.getPage(p);
+    const tc = await page.getTextContent();
+    const pageText = tc.items.map(item => item.str).join(' ');
+    textoCompleto += pageText + ' ';
   }
-
-  function norm(s) {
-    return s.replace(/\uFB00/g, 'ff').replace(/\uFB01/g, 'fi').replace(/\uFB02/g, 'fl')
-            .replace(/\uFB03/g, 'ffi').replace(/\uFB04/g, 'ffl').replace(/\u00A0/g, ' ').trim();
+  
+  dbg('Texto completo extraído (primeiros 800 caracteres):');
+  dbg(textoCompleto.substring(0, 800));
+  
+  // Extrair INFLAÇÃO com função inteligente
+  const inflacaoPct = extrairInfeccaoInteligente(textoCompleto);
+  if (inflacaoPct) {
+    dbg(`✅ INFLAÇÃO encontrada: ${inflacaoPct}%`);
+  } else {
+    dbg(`❌ INFLAÇÃO NÃO encontrada via regex inteligente`);
   }
-  const T = raw.map(norm).filter(s => s.length > 0);
-  dbg('Tokens: ' + T.length);
-
-  function lerPct(i) {
-    if (T[i] !== '(') return null;
-    const a = T[i + 1] || '', sep = T[i + 2] || '', b = T[i + 3] || '', fim = T[i + 4] || '';
-    if (sep === ',' && fim.endsWith('%)') && /^\d+$/.test(a) && /^\d+$/.test(b))
-      return parseFloat(a + '.' + b);
+  
+  // Extrair outros percentuais
+  function extrairPct(nome) {
+    const regex = new RegExp(nome + '\\s*\\((\\d{1,3},\\d{2})%\\)', 'i');
+    const match = textoCompleto.match(regex);
+    if (match) return parseFloat(match[1].replace(',', '.'));
     return null;
   }
-
-  function lerValor(i) {
-    if (T[i] !== 'R') return null;
-    let j = i + 2;
-    let numero = '';
-    while (j < T.length && j < i + 20) {
-      const tk = T[j];
-      if (/^\d+$/.test(tk)) { numero += tk; j++; }
-      else if (tk === '.') { numero += '.'; j++; }
-      else if (tk === ',') {
-        const prox = T[j + 1] || '';
-        if (/^\d{2}$/.test(prox)) { numero += ',' + prox; j += 2; break; }
-        else break;
-      }
-      else break;
-    }
-    if (!numero || !numero.includes(',')) return null;
-    return parseFloat(numero.replace(/\./g, '').replace(',', '.'));
+  
+  const pctPos = extrairPct('Pós Fixado');
+  const pctPre = extrairPct('Pré Fixado');
+  const pctMulti = extrairPct('Multimercado');
+  const pctRVBrasil = extrairPct('Renda Variável Brasil');
+  const pctAlternativo = extrairPct('Alternativo');
+  
+  // Renda Variável total
+  let rendaVariavelTotal = (pctRVBrasil || 0) + (pctAlternativo || 0);
+  
+  // Patrimônio
+  let patrimonio = 0;
+  const patMatch = textoCompleto.match(/PATRIM[OÔ]NIO\s*TOTAL\s*BRUTO[:\s]*R\$\s*([\d\.]+,\d{2})/i);
+  if (patMatch) {
+    patrimonio = parseFloat(patMatch[1].replace(/\./g, '').replace(',', '.'));
+    dbg(`💰 Patrimônio: R$ ${patrimonio.toLocaleString('pt-BR')}`);
   }
-
-  const NOMES = [
-    { re: /^P[oó]s Fixado$/i,           key: "Pós Fixado", destino: "Pós Fixado" },
-    { re: /^Pr[eé] Fixado$/i,           key: "Pré Fixado", destino: "Pré Fixado" },
-    { re: /^Inflação$/i,                key: "Inflação", destino: "Inflação" },
-    { re: /^Multimercado$/i,            key: "Multimercado", destino: "Multimercado" },
-    { re: /^Renda Vari[aá]vel Brasil$/i, key: "Renda Variável Brasil", destino: "Renda Variável" },
-    { re: /^Alternativo$/i,             key: "Alternativo", destino: "Renda Variável" }
-  ];
-
-  const res = {};
-
-  for (let i = 0; i < T.length; i++) {
-    for (const { re, key, destino } of NOMES) {
-      if (!re.test(T[i])) continue;
-
-      let pi = -1;
-      for (let k = i + 1; k <= i + 3 && k < T.length; k++) {
-        if (T[k] === '(') { pi = k; break; }
-      }
-      if (pi === -1) continue;
-
-      const pct = lerPct(pi);
-      if (pct === null) continue;
-
-      let ri = -1;
-      for (let k = pi + 5; k <= pi + 9 && k < T.length; k++) {
-        if (T[k] === 'R') { ri = k; break; }
-      }
-      const val = ri !== -1 ? lerValor(ri) : null;
-
-      if (!res[destino]) {
-        res[destino] = { pct: 0, val: 0 };
-      }
-      res[destino].pct += pct;
-      if (val) res[destino].val += val;
-
-      dbg(`[OK] ${key} → ${destino}: ${pct}% | R$${val}`);
-      break;
-    }
-  }
-
-  const totVal = CLASSES.reduce((s, c) => s + (res[c]?.val || 0), 0);
-  if (totVal > 0) {
-    for (const c of CLASSES) {
-      if (res[c] && res[c].val > 0 && !res[c].pct) {
-        res[c].pct = (res[c].val / totVal) * 100;
-        dbg(`[Recalc] ${c}: ${res[c].pct.toFixed(2)}%`);
-      }
-    }
-  }
-
-  let patrimonio = totVal;
-  for (let i = 0; i < T.length - 3; i++) {
-    if (/PATRIM/i.test(T[i]) && /TOTAL/i.test(T[i + 1]) && /BRUTO/i.test(T[i + 2])) {
-      for (let k = i + 3; k < Math.min(i + 10, T.length); k++) {
-        if (T[k] === 'R') {
-          const v = lerValor(k);
-          if (v) { patrimonio = v; dbg(`[Patr] R$${v}`); break; }
-        }
-      }
-      break;
-    }
-  }
-
+  
+  const res = {
+    "Pós Fixado": { pct: pctPos, val: 0 },
+    "Pré Fixado": { pct: pctPre, val: 0 },
+    "Inflação": { pct: inflacaoPct, val: 0 },
+    "Multimercado": { pct: pctMulti, val: 0 },
+    "Renda Variável": { pct: rendaVariavelTotal, val: 0 }
+  };
+  
+  dbg(`\n📊 RESUMO FINAL:`);
+  dbg(`Pós Fixado: ${pctPos}%`);
+  dbg(`Pré Fixado: ${pctPre}%`);
+  dbg(`Inflação: ${inflacaoPct}%`);
+  dbg(`Multimercado: ${pctMulti}%`);
+  dbg(`Renda Variável Brasil: ${pctRVBrasil}%`);
+  dbg(`Alternativo: ${pctAlternativo}%`);
+  dbg(`Renda Variável TOTAL: ${rendaVariavelTotal}%`);
+  
   return { res, patrimonio };
 }
 
@@ -904,17 +864,22 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
   document.getElementById('overlay').classList.add('show');
   try {
     const { res, patrimonio } = await extrairDadosPDF(file);
-    const encontrados = CLASSES.filter(c => res[c]?.pct != null).length;
-    if (encontrados === 0) {
-      setStatus('Não foi possível extrair os dados. Verifique o PDF.', 'err');
-    } else {
-      CLASSES.forEach(c => { if (inputsMap[c] && res[c]?.pct != null) inputsMap[c].value = res[c].pct.toFixed(2); });
-      atualizarTotal();
-      setStatus('PDF importado com sucesso! ' + encontrados + ' classes encontradas.', 'ok');
+    let encontrou = false;
+    for (const classe of CLASSES) {
+      if (res[classe] && res[classe].pct !== null && res[classe].pct > 0) {
+        inputsMap[classe].value = res[classe].pct.toFixed(2);
+        encontrou = true;
+      }
+    }
+    atualizarTotal();
+    if (encontrou) {
+      setStatus('✅ PDF importado com sucesso!', 'ok');
       if (patrimonio > 0) {
-        document.getElementById('patrimVal').textContent = 'Patrimônio: ' + fmtBRL(patrimonio);
+        document.getElementById('patrimVal').textContent = fmtBRL(patrimonio);
         document.getElementById('patrimTag').classList.add('show');
       }
+    } else {
+      setStatus('❌ Não foi possível extrair os dados. Verifique o debug.', 'err');
     }
   } catch (e) {
     setStatus('Erro: ' + e.message, 'err'); dbg('ERRO: ' + e.message);
@@ -937,6 +902,31 @@ document.getElementById('btnLimpar').addEventListener('click', () => {
 
 document.getElementById('btnAnalisar').addEventListener('click', analisar);
 document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+
+function toggleTheme() {
+  const body = document.body;
+  const toggleBtn = document.getElementById('themeToggle');
+  if (body.classList.contains('light')) {
+    body.classList.remove('light');
+    localStorage.setItem('theme', 'dark');
+    toggleBtn.textContent = '🌙';
+  } else {
+    body.classList.add('light');
+    localStorage.setItem('theme', 'light');
+    toggleBtn.textContent = '☀️';
+  }
+}
+
+function initTheme() {
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme === 'light') {
+    document.body.classList.add('light');
+    document.getElementById('themeToggle').textContent = '☀️';
+  } else {
+    document.body.classList.remove('light');
+    document.getElementById('themeToggle').textContent = '🌙';
+  }
+}
 
 (function() {
   document.getElementById('hDate').textContent = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
