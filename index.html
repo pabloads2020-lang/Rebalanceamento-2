@@ -72,7 +72,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 .resumo-val{font-size:22px;font-weight:600;font-family:'DM Mono',monospace}
 .legenda{display:flex;gap:1rem;flex-wrap:wrap;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border)}
 .legenda-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)}
-.debug-box{display:none;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.75rem;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);max-height:180px;overflow-y:auto;margin-top:.75rem;white-space:pre-wrap;line-height:1.7}
+.debug-box{display:none;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.75rem;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);max-height:300px;overflow-y:auto;margin-top:.75rem;white-space:pre-wrap;line-height:1.7}
 .debug-box.show{display:block}
 .overlay{display:none;position:fixed;inset:0;background:rgba(14,17,23,.88);z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:1rem}
 .overlay.show{display:flex}
@@ -179,7 +179,7 @@ function atualizarTotal() {
   document.getElementById('totalBar').className = 'total-bar ' + (Math.abs(t - 100) < 0.1 ? 'total-ok' : 'total-err');
 }
 
-// ========== EXTRAÇÃO INFALÍVEL - BUSCA DIRETA NO TEXTO ==========
+// ========== EXTRAÇÃO BUSCANDO EM TODO O TEXTO ==========
 async function extrairDadosPDF(file) {
   const ab = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
@@ -188,26 +188,54 @@ async function extrairDadosPDF(file) {
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
     const tc = await page.getTextContent();
-    textoCompleto += tc.items.map(item => item.str).join(' ') + ' ';
+    const textoPagina = tc.items.map(item => item.str).join(' ');
+    textoCompleto += textoPagina + ' ';
+    dbg(`📄 Página ${p}: ${tc.items.length} itens - amostra: "${textoPagina.substring(0, 100)}..."`);
   }
   
-  dbg('Texto extraído (primeiros 500 caracteres):');
-  dbg(textoCompleto.substring(0, 500));
+  dbg('\n--- TEXTO COMPLETO (BUSCA POR ESTRATÉGIAS) ---');
   
-  // Função para extrair percentual pelo nome da estratégia
+  // Função para extrair percentual pelo nome da estratégia - busca em TODO o texto
   function extrairPct(nome) {
-    const regex = new RegExp(nome + '\\s*\\((\\d{1,3},\\d{2})%\\)', 'i');
-    const match = textoCompleto.match(regex);
+    // Busca ignorando espaços e caracteres especiais que o PDF pode inserir
+    // Ex: "P ó s   F i x a d o" ou "PósFixado"
+    const regexFlexivel = new RegExp(nome.split('').join('\\s*') + '\\s*\\((\\d{1,3},\\d{2})%\\)', 'i');
+    const match = textoCompleto.match(regexFlexivel);
     if (match) {
       const valor = parseFloat(match[1].replace(',', '.'));
-      dbg(`✅ ${nome}: ${valor}%`);
+      dbg(`✅ ${nome}: ${valor}% (encontrado: "${match[0]}")`);
       return valor;
     }
+    
+    // Tentativa mais simples: nome sem espaços internos
+    const nomeSemEspaco = nome.replace(/\s/g, '');
+    const regexSimples = new RegExp(nomeSemEspaco + '\\s*\\((\\d{1,3},\\d{2})%\\)', 'i');
+    const match2 = textoCompleto.match(regexSimples);
+    if (match2) {
+      const valor = parseFloat(match2[1].replace(',', '.'));
+      dbg(`✅ ${nome}: ${valor}% (encontrado via simples: "${match2[0]}")`);
+      return valor;
+    }
+    
     dbg(`❌ ${nome}: não encontrado`);
     return null;
   }
   
-  // Extrair todos os percentuais
+  // Buscar seção de estratégias
+  const compIndex = textoCompleto.indexOf('COMPOSIÇÃO');
+  if (compIndex !== -1) {
+    const textoComposicao = textoCompleto.substring(compIndex, compIndex + 2000);
+    dbg('\n--- SEÇÃO COMPOSIÇÃO ENCONTRADA ---');
+    dbg(textoComposicao.substring(0, 1000));
+  } else {
+    dbg('\n⚠️ Seção "COMPOSIÇÃO" não encontrada!');
+    // Tentar buscar alternativamente
+    dbg('\n--- BUSCANDO "Pós Fixado" em todo o texto ---');
+    const posMatch = textoCompleto.match(/P.{0,5}?s.{0,5}?Fixado.{0,20}\((\d{1,3},\d{2})%\)/i);
+    if (posMatch) dbg(`🔍 Encontrado padrão Pós Fixado: "${posMatch[0]}"`);
+  }
+  
+  // Extrair todos os percentuais (busca em todo o texto)
   const pctPos = extrairPct('Pós Fixado');
   const pctPre = extrairPct('Pré Fixado');
   const pctInf = extrairPct('Inflação');
