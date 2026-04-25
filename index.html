@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rebalanceador de Carteira · XP</title>
+<title>Rebalanceador de Carteira · PBF</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
@@ -40,7 +40,6 @@
   --footer-border: rgba(255,255,255,0.07);
 }
 
-/* ===== MODO CLARO ===== */
 body.light {
   --bg: #f5f7fa;
   --bg2: #ffffff;
@@ -73,525 +72,82 @@ body.light {
   --footer-border: rgba(0,0,0,0.08);
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
-}
-
-body {
-  font-family: 'DM Sans', sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-}
-
-.header {
-  background: var(--header-bg);
-  border-bottom: 1px solid var(--header-border);
-  padding: 0 2rem;
-  height: 60px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-.header-logo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 15px;
-  font-weight: 600;
-}
-.dot {
-  width: 28px;
-  height: 28px;
-  background: var(--gold);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
-  color: #000;
-}
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-.header-date {
-  font-size: 12px;
-  color: var(--text3);
-  font-family: 'DM Mono', monospace;
-}
-.theme-toggle {
-  background: var(--bg3);
-  border: 1px solid var(--border2);
-  border-radius: 30px;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 18px;
-}
-.theme-toggle:hover {
-  border-color: var(--gold);
-  transform: scale(1.05);
-}
-
-.main {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 2rem;
-}
-.card {
-  background: var(--card-bg);
-  border: 1px solid var(--card-border);
-  border-radius: 12px;
-  padding: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-.card-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text3);
-  text-transform: uppercase;
-  letter-spacing: 1.2px;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border);
-}
-.upload-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-.file-label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--bg3);
-  border: 1.5px dashed var(--border2);
-  border-radius: 8px;
-  padding: 9px 14px;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--text2);
-  flex: 1;
-  min-width: 180px;
-  transition: border-color 0.2s, color 0.2s;
-}
-.file-label:hover {
-  border-color: var(--gold);
-  color: var(--gold);
-}
-#filePdf {
-  display: none;
-}
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 18px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: 'DM Sans', sans-serif;
-  cursor: pointer;
-  border: none;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-.btn-gold {
-  background: var(--gold);
-  color: #000;
-}
-.btn-gold:hover {
-  background: var(--gold2);
-  transform: translateY(-1px);
-}
-.btn-ghost {
-  background: transparent;
-  border: 1px solid var(--border2);
-  color: var(--text2);
-}
-.btn-ghost:hover {
-  border-color: var(--red);
-  color: var(--red);
-  background: var(--red-bg);
-}
-.btn-full {
-  background: var(--gold);
-  color: #000;
-  font-size: 14px;
-  font-weight: 600;
-  width: 100%;
-  padding: 12px;
-  justify-content: center;
-  margin-top: 1rem;
-  border-radius: 10px;
-}
-.btn-full:hover {
-  background: var(--gold2);
-  transform: translateY(-1px);
-}
-.status {
-  display: none;
-  align-items: center;
-  gap: 8px;
-  padding: 9px 13px;
-  border-radius: 8px;
-  font-size: 13px;
-  margin-top: 0.75rem;
-}
-.status.show {
-  display: flex;
-}
-.status-ok {
-  background: var(--green-bg);
-  color: var(--green);
-  border: 1px solid rgba(46, 204, 113, 0.25);
-}
-.status-err {
-  background: var(--red-bg);
-  color: var(--red);
-  border: 1px solid rgba(231, 76, 60, 0.25);
-}
-.patrim-tag {
-  display: none;
-  align-items: center;
-  gap: 6px;
-  margin-top: 0.6rem;
-  background: rgba(245, 200, 66, 0.1);
-  border: 1px solid rgba(245, 200, 66, 0.25);
-  border-radius: 20px;
-  padding: 4px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--gold);
-  width: fit-content;
-}
-.patrim-tag.show {
-  display: flex;
-}
-.perfis-row {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 1.5rem;
-}
-.perfil-btn {
-  flex: 1;
-  padding: 10px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 500;
-  font-family: 'DM Sans', sans-serif;
-  cursor: pointer;
-  text-align: center;
-  border: 1px solid var(--border2);
-  background: var(--bg2);
-  color: var(--text2);
-  transition: all 0.15s;
-}
-.perfil-btn:hover {
-  border-color: var(--gold);
-  color: var(--gold);
-}
-.perfil-btn.ativo {
-  background: var(--gold);
-  border-color: var(--gold);
-  color: #000;
-  font-weight: 600;
-}
-.grid2 {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-}
-@media (max-width: 700px) {
-  .grid2 {
-    grid-template-columns: 1fr;
-  }
-}
-.classe-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-}
-.classe-row:last-of-type {
-  border-bottom: none;
-}
-.dot8 {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-.c0 {
-  background: #f5c842;
-}
-.c1 {
-  background: #3498db;
-}
-.c2 {
-  background: #2ecc71;
-}
-.c3 {
-  background: #9b59b6;
-}
-.c4 {
-  background: #e74c3c;
-}
-.classe-nome {
-  flex: 1;
-  font-size: 13px;
-}
-.classe-input {
-  width: 72px;
-  padding: 6px 10px;
-  text-align: right;
-  background: var(--input-bg);
-  border: 1px solid var(--input-border);
-  border-radius: 7px;
-  color: var(--text);
-  font-size: 13px;
-  font-family: 'DM Mono', monospace;
-}
-.classe-input:focus {
-  outline: none;
-  border-color: var(--gold);
-}
-.pct-label {
-  font-size: 12px;
-  color: var(--text3);
-  width: 14px;
-}
-.total-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 500;
-  margin-top: 0.75rem;
-}
-.total-ok {
-  background: var(--green-bg);
-  color: var(--green);
-  border: 1px solid rgba(46, 204, 113, 0.2);
-}
-.total-err {
-  background: var(--red-bg);
-  color: var(--red);
-  border: 1px solid rgba(231, 76, 60, 0.2);
-}
-.alvo-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--border);
-}
-.alvo-row:last-of-type {
-  border-bottom: none;
-}
-.alvo-nome {
-  flex: 1;
-  font-size: 13px;
-}
-.alvo-bar-wrap {
-  width: 60px;
-  height: 4px;
-  background: var(--alvo-bar-bg);
-  border-radius: 2px;
-  overflow: hidden;
-}
-.alvo-bar-fill {
-  height: 100%;
-  background: var(--gold);
-  border-radius: 2px;
-  transition: width 0.4s;
-}
-.alvo-pct {
-  font-size: 13px;
-  font-weight: 600;
-  font-family: 'DM Mono', monospace;
-  color: var(--gold);
-  min-width: 36px;
-  text-align: right;
-}
-.rec-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
-  flex-wrap: wrap;
-}
-.rec-row:last-of-type {
-  border-bottom: none;
-}
-.rec-nome {
-  flex: 1;
-  font-size: 13px;
-  min-width: 100px;
-}
-.rec-nums {
-  font-size: 12px;
-  color: var(--text2);
-  font-family: 'DM Mono', monospace;
-}
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-}
-.b-manter {
-  background: var(--amber-bg);
-  color: var(--amber);
-  border: 1px solid rgba(243, 156, 18, 0.3);
-}
-.b-alocar {
-  background: var(--green-bg);
-  color: var(--green);
-  border: 1px solid rgba(46, 204, 113, 0.3);
-}
-.b-retirar {
-  background: var(--red-bg);
-  color: var(--red);
-  border: 1px solid rgba(231, 76, 60, 0.3);
-}
-.resumo-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 0.75rem;
-  margin-top: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--border);
-}
-@media (max-width: 500px) {
-  .resumo-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-.resumo-item {
-  background: var(--resumo-item-bg);
-  border-radius: 8px;
-  padding: 0.75rem;
-  text-align: center;
-}
-.resumo-label {
-  font-size: 11px;
-  color: var(--text3);
-  margin-bottom: 4px;
-}
-.resumo-val {
-  font-size: 22px;
-  font-weight: 600;
-  font-family: 'DM Mono', monospace;
-}
-.legenda {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--border);
-}
-.legenda-item {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  color: var(--text3);
-}
-.debug-box {
-  display: none;
-  background: var(--debug-bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 0.75rem;
-  font-size: 11px;
-  font-family: 'DM Mono', monospace;
-  color: var(--text3);
-  max-height: 180px;
-  overflow-y: auto;
-  margin-top: 0.75rem;
-  white-space: pre-wrap;
-  line-height: 1.7;
-}
-.debug-box.show {
-  display: block;
-}
-.overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: var(--overlay-bg);
-  z-index: 200;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 1rem;
-}
-.overlay.show {
-  display: flex;
-}
-.spin {
-  width: 40px;
-  height: 40px;
-  border: 3px solid var(--border2);
-  border-top-color: var(--gold);
-  border-radius: 50%;
-  animation: rot 0.8s linear infinite;
-}
-@keyframes rot {
-  to {
-    transform: rotate(360deg);
-  }
-}
-.spin-text {
-  font-size: 14px;
-  color: var(--text2);
-}
-.fade-in {
-  animation: fi 0.3s ease;
-}
-@keyframes fi {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: none;
-  }
-}
-.footer {
-  text-align: center;
-  font-size: 11px;
-  color: var(--text3);
-  padding: 2rem;
-  border-top: 1px solid var(--footer-border);
-  margin-top: 1rem;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+.header { background: var(--header-bg); border-bottom: 1px solid var(--header-border); padding: 0 2rem; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+.header-logo { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; }
+.dot { width: 28px; height: 28px; background: var(--gold); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #000; }
+.header-right { display: flex; align-items: center; gap: 1rem; }
+.header-date { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
+.theme-toggle { background: var(--bg3); border: 1px solid var(--border2); border-radius: 30px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 18px; }
+.theme-toggle:hover { border-color: var(--gold); transform: scale(1.05); }
+.main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+.card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
+.card-title { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+.upload-row { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.file-label { display: flex; align-items: center; gap: 8px; background: var(--bg3); border: 1.5px dashed var(--border2); border-radius: 8px; padding: 9px 14px; cursor: pointer; font-size: 13px; color: var(--text2); flex: 1; min-width: 180px; }
+.file-label:hover { border-color: var(--gold); color: var(--gold); }
+#filePdf { display: none; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
+.btn-gold { background: var(--gold); color: #000; }
+.btn-gold:hover { background: var(--gold2); transform: translateY(-1px); }
+.btn-ghost { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
+.btn-ghost:hover { border-color: var(--red); color: var(--red); background: var(--red-bg); }
+.btn-full { background: var(--gold); color: #000; font-size: 14px; font-weight: 600; width: 100%; padding: 12px; justify-content: center; margin-top: 1rem; border-radius: 10px; }
+.btn-full:hover { background: var(--gold2); transform: translateY(-1px); }
+.status { display: none; align-items: center; gap: 8px; padding: 9px 13px; border-radius: 8px; font-size: 13px; margin-top: 0.75rem; }
+.status.show { display: flex; }
+.status-ok { background: var(--green-bg); color: var(--green); border: 1px solid rgba(46, 204, 113, 0.25); }
+.status-err { background: var(--red-bg); color: var(--red); border: 1px solid rgba(231, 76, 60, 0.25); }
+.patrim-tag { display: none; align-items: center; gap: 6px; margin-top: 0.6rem; background: rgba(245, 200, 66, 0.1); border: 1px solid rgba(245, 200, 66, 0.25); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 500; color: var(--gold); width: fit-content; }
+.patrim-tag.show { display: flex; }
+.perfis-row { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+.perfil-btn { flex: 1; padding: 10px; border-radius: 10px; font-size: 13px; font-weight: 500; cursor: pointer; text-align: center; border: 1px solid var(--border2); background: var(--bg2); color: var(--text2); }
+.perfil-btn:hover { border-color: var(--gold); color: var(--gold); }
+.perfil-btn.ativo { background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+@media (max-width: 700px) { .grid2 { grid-template-columns: 1fr; } }
+.classe-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.classe-row:last-of-type { border-bottom: none; }
+.dot8 { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.c0 { background: #f5c842; }
+.c1 { background: #3498db; }
+.c2 { background: #2ecc71; }
+.c3 { background: #9b59b6; }
+.c4 { background: #e74c3c; }
+.classe-nome { flex: 1; font-size: 13px; }
+.classe-input { width: 72px; padding: 6px 10px; text-align: right; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 7px; color: var(--text); font-size: 13px; font-family: 'DM Mono', monospace; }
+.classe-input:focus { outline: none; border-color: var(--gold); }
+.total-bar { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 8px; font-size: 13px; font-weight: 500; margin-top: 0.75rem; }
+.total-ok { background: var(--green-bg); color: var(--green); border: 1px solid rgba(46, 204, 113, 0.2); }
+.total-err { background: var(--red-bg); color: var(--red); border: 1px solid rgba(231, 76, 60, 0.2); }
+.alvo-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.alvo-row:last-of-type { border-bottom: none; }
+.alvo-nome { flex: 1; font-size: 13px; }
+.alvo-bar-wrap { width: 60px; height: 4px; background: var(--alvo-bar-bg); border-radius: 2px; overflow: hidden; }
+.alvo-bar-fill { height: 100%; background: var(--gold); border-radius: 2px; }
+.alvo-pct { font-size: 13px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--gold); min-width: 36px; text-align: right; }
+.rec-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.rec-nome { flex: 1; font-size: 13px; min-width: 100px; }
+.rec-nums { font-size: 12px; color: var(--text2); font-family: 'DM Mono', monospace; }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+.b-manter { background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(243, 156, 18, 0.3); }
+.b-alocar { background: var(--green-bg); color: var(--green); border: 1px solid rgba(46, 204, 113, 0.3); }
+.b-retirar { background: var(--red-bg); color: var(--red); border: 1px solid rgba(231, 76, 60, 0.3); }
+.resumo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
+@media (max-width: 500px) { .resumo-grid { grid-template-columns: repeat(2, 1fr); } }
+.resumo-item { background: var(--resumo-item-bg); border-radius: 8px; padding: 0.75rem; text-align: center; }
+.resumo-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+.resumo-val { font-size: 22px; font-weight: 600; font-family: 'DM Mono', monospace; }
+.legenda { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+.legenda-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text3); }
+.debug-box { display: none; background: var(--debug-bg); border: 1px solid var(--border); border-radius: 8px; padding: 0.75rem; font-size: 11px; font-family: 'DM Mono', monospace; color: var(--text3); max-height: 300px; overflow-y: auto; margin-top: 0.75rem; white-space: pre-wrap; line-height: 1.7; }
+.debug-box.show { display: block; }
+.overlay { display: none; position: fixed; inset: 0; background: var(--overlay-bg); z-index: 200; align-items: center; justify-content: center; flex-direction: column; gap: 1rem; }
+.overlay.show { display: flex; }
+.spin { width: 40px; height: 40px; border: 3px solid var(--border2); border-top-color: var(--gold); border-radius: 50%; animation: rot 0.8s linear infinite; }
+@keyframes rot { to { transform: rotate(360deg); } }
+.footer { text-align: center; font-size: 11px; color: var(--text3); padding: 2rem; border-top: 1px solid var(--footer-border); margin-top: 1rem; }
 </style>
 </head>
 <body>
@@ -602,10 +158,7 @@ body {
 </div>
 
 <header class="header">
-  <div class="header-logo">
-    <div class="dot">XP</div>
-    Rebalanceador de Carteira
-  </div>
+  <div class="header-logo"><div class="dot">XP</div>Rebalanceador de Carteira</div>
   <div class="header-right">
     <div class="header-date" id="hDate"></div>
     <button class="theme-toggle" id="themeToggle" title="Alternar modo claro/escuro">🌙</button>
@@ -621,20 +174,11 @@ body {
         <span id="fileName">Selecionar arquivo PDF...</span>
       </label>
       <input type="file" id="filePdf" accept=".pdf">
-      <button class="btn btn-gold" id="btnImportar">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
-        Importar PDF
-      </button>
-      <button class="btn btn-ghost" id="btnLimpar">
-        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-        Limpar
-      </button>
+      <button class="btn btn-gold" id="btnImportar">Importar PDF</button>
+      <button class="btn btn-ghost" id="btnLimpar">Limpar</button>
     </div>
     <div id="status" class="status"></div>
-    <div id="patrimTag" class="patrim-tag">
-      <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-      <span id="patrimVal"></span>
-    </div>
+    <div id="patrimTag" class="patrim-tag"><span id="patrimVal"></span></div>
     <div id="debugBox" class="debug-box"></div>
   </div>
 
@@ -644,9 +188,7 @@ body {
     <div class="card">
       <div class="card-title">Alocação atual</div>
       <div id="inputsAtual"></div>
-      <div id="totalBar" class="total-bar total-err">
-        <span>Total</span><span id="totalVal">0,00%</span>
-      </div>
+      <div id="totalBar" class="total-bar total-err"><span>Total</span><span id="totalVal">0,00%</span></div>
     </div>
     <div class="card">
       <div class="card-title">Carteira recomendada · <span id="perfilLabel" style="color:var(--gold)">Moderado</span></div>
@@ -660,14 +202,14 @@ body {
     <div id="listaRec"></div>
     <div class="resumo-grid" id="resumoGrid"></div>
     <div class="legenda">
-      <div class="legenda-item"><div class="dot8" style="background:var(--amber)"></div>Manter (dentro da tolerância)</div>
-      <div class="legenda-item"><div class="dot8" style="background:var(--green)"></div>Alocar mais recursos</div>
-      <div class="legenda-item"><div class="dot8" style="background:var(--red)"></div>Retirar / reduzir posição</div>
+      <div class="legenda-item"><div class="dot8" style="background:var(--amber)"></div>Manter</div>
+      <div class="legenda-item"><div class="dot8" style="background:var(--green)"></div>Alocar</div>
+      <div class="legenda-item"><div class="dot8" style="background:var(--red)"></div>Retirar</div>
     </div>
   </div>
 </main>
 
-<footer class="footer">Material de caráter exclusivamente informativo — não constitui recomendação de investimento.</footer>
+<footer class="footer">Material informativo — não constitui recomendação de investimento.</footer>
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -686,7 +228,7 @@ let inputsMap = {};
 
 function fmtPct(v) { return v.toFixed(2).replace('.', ',') + ' %'; }
 function fmtBRL(v) { return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2}); }
-function setStatus(msg, tipo) { const el = document.getElementById('status'); el.innerHTML = msg; el.className = 'status show status-' + tipo; setTimeout(() => { if (el.classList.contains('show')) el.classList.remove('show'); }, 4000); }
+function setStatus(msg, tipo) { const el = document.getElementById('status'); el.innerHTML = msg; el.className = 'status show status-' + tipo; setTimeout(() => el.classList.remove('show'), 4000); }
 function dbg(txt) { const el = document.getElementById('debugBox'); el.classList.add('show'); el.textContent += txt + '\n'; }
 function atualizarTotal() {
   let t = 0;
@@ -695,81 +237,72 @@ function atualizarTotal() {
   document.getElementById('totalBar').className = 'total-bar ' + (Math.abs(t - 100) < 0.1 ? 'total-ok' : 'total-err');
 }
 
-// ===== FUNÇÃO INTELIGENTE PARA EXTRAIR INFLAÇÃO =====
-function extrairInfeccaoInteligente(textoCompleto) {
-  // ESTRATÉGIA 1: Busca exata
-  let match = textoCompleto.match(/Inflação\s*\((\d{1,3},\d{2})%\)/i);
-  if (match) return parseFloat(match[1].replace(',', '.'));
-  
-  // ESTRATÉGIA 2: Busca com caracteres estranhos (fl, ﬁ, etc)
-  match = textoCompleto.match(/Inﬂação\s*\((\d{1,3},\d{2})%\)/i);
-  if (match) return parseFloat(match[1].replace(',', '.'));
-  
-  // ESTRATÉGIA 3: Busca sem acento
-  match = textoCompleto.match(/Inflacao\s*\((\d{1,3},\d{2})%\)/i);
-  if (match) return parseFloat(match[1].replace(',', '.'));
-  
-  // ESTRATÉGIA 4: Busca com espaço entre Infl e ação
-  match = textoCompleto.match(/Inﬂ\s*ação\s*\((\d{1,3},\d{2})%\)/i);
-  if (match) return parseFloat(match[1].replace(',', '.'));
-  
-  // ESTRATÉGIA 5: Busca qualquer coisa que comece com Inf e tenha (X,X%)
-  match = textoCompleto.match(/Inf[a-zÀ-Úà-ú]*\s*\((\d{1,3},\d{2})%\)/i);
-  if (match) {
-    const pct = parseFloat(match[1].replace(',', '.'));
-    if (pct > 0 && pct < 100) return pct;
-  }
-  
-  // ESTRATÉGIA 6: Busca na lista de tokens (último recurso)
-  const idxInflacao = textoCompleto.toLowerCase().indexOf('inflação');
-  if (idxInflacao !== -1) {
-    const trecho = textoCompleto.substring(idxInflacao, idxInflacao + 50);
-    const pctMatch = trecho.match(/\((\d{1,3},\d{2})%\)/);
-    if (pctMatch) return parseFloat(pctMatch[1].replace(',', '.'));
-  }
-  
-  return null;
-}
-
 async function extrairDadosPDF(file) {
   const ab = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
   
   let textoCompleto = '';
+  
+  // Força a extração de CADA página individualmente
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
     const tc = await page.getTextContent();
     const pageText = tc.items.map(item => item.str).join(' ');
-    textoCompleto += pageText + ' ';
+    textoCompleto += pageText + '\n';
+    dbg(`📄 Página ${p}: ${tc.items.length} itens - amostra: "${pageText.substring(0, 100)}..."`);
   }
   
-  dbg('Texto completo extraído (primeiros 800 caracteres):');
-  dbg(textoCompleto.substring(0, 800));
+  dbg('\n--- TEXTO COMPLETO (BUSCA PADRONIZADA) ---');
   
-  // Extrair INFLAÇÃO com função inteligente
-  const inflacaoPct = extrairInfeccaoInteligente(textoCompleto);
-  if (inflacaoPct) {
-    dbg(`✅ INFLAÇÃO encontrada: ${inflacaoPct}%`);
+  // Busca por "Estratégias" ou "COMPOSIÇÃO" para encontrar a seção correta
+  let secaoEstrategias = '';
+  const idxComposicao = textoCompleto.indexOf('COMPOSIÇÃO');
+  const idxEstrategias = textoCompleto.indexOf('Estratégias');
+  const idxPos = textoCompleto.indexOf('Pós Fixado');
+  
+  if (idxComposicao !== -1) {
+    secaoEstrategias = textoCompleto.substring(idxComposicao, idxComposicao + 2000);
+    dbg('✅ Seção "COMPOSIÇÃO" encontrada!');
+  } else if (idxEstrategias !== -1) {
+    secaoEstrategias = textoCompleto.substring(idxEstrategias, idxEstrategias + 2000);
+    dbg('✅ Seção "Estratégias" encontrada!');
+  } else if (idxPos !== -1) {
+    secaoEstrategias = textoCompleto.substring(idxPos, idxPos + 1500);
+    dbg('✅ Seção "Pós Fixado" encontrada!');
   } else {
-    dbg(`❌ INFLAÇÃO NÃO encontrada via regex inteligente`);
+    dbg('⚠️ Nenhuma seção de estratégias encontrada! Usando texto completo.');
+    secaoEstrategias = textoCompleto;
   }
   
-  // Extrair outros percentuais
+  dbg('\n--- CONTEÚDO DA SEÇÃO DE ESTRATÉGIAS ---');
+  dbg(secaoEstrategias.substring(0, 1000));
+  
+  // EXTRAIR TODOS OS PERCENTUAIS da seção de estratégias
   function extrairPct(nome) {
-    const regex = new RegExp(nome + '\\s*\\((\\d{1,3},\\d{2})%\\)', 'i');
-    const match = textoCompleto.match(regex);
-    if (match) return parseFloat(match[1].replace(',', '.'));
+    // Padrão: "Pós Fixado (42,61%)" ou "Pós Fixado (42,61%)"
+    const regex = new RegExp(nome.split('').join('\\s*') + '\\s*\\((\\d{1,3},\\d{2})%\\)', 'i');
+    const match = secaoEstrategias.match(regex);
+    if (match) {
+      return parseFloat(match[1].replace(',', '.'));
+    }
     return null;
   }
   
   const pctPos = extrairPct('Pós Fixado');
   const pctPre = extrairPct('Pré Fixado');
+  const pctInf = extrairPct('Inflação');
   const pctMulti = extrairPct('Multimercado');
   const pctRVBrasil = extrairPct('Renda Variável Brasil');
   const pctAlternativo = extrairPct('Alternativo');
   
-  // Renda Variável total
-  let rendaVariavelTotal = (pctRVBrasil || 0) + (pctAlternativo || 0);
+  // Se não achou Renda Variável Brasil, tenta só "Renda Variável"
+  let pctRendaVariavel = pctRVBrasil;
+  if (!pctRendaVariavel) {
+    const rvMatch = secaoEstrategias.match(/Renda\s*Vari[áa]vel\s*\((\d{1,3},\d{2})%\)/i);
+    if (rvMatch) pctRendaVariavel = parseFloat(rvMatch[1].replace(',', '.'));
+  }
+  
+  let rendaVariavelTotal = (pctRendaVariavel || 0) + (pctAlternativo || 0);
   
   // Patrimônio
   let patrimonio = 0;
@@ -782,18 +315,18 @@ async function extrairDadosPDF(file) {
   const res = {
     "Pós Fixado": { pct: pctPos, val: 0 },
     "Pré Fixado": { pct: pctPre, val: 0 },
-    "Inflação": { pct: inflacaoPct, val: 0 },
+    "Inflação": { pct: pctInf, val: 0 },
     "Multimercado": { pct: pctMulti, val: 0 },
     "Renda Variável": { pct: rendaVariavelTotal, val: 0 }
   };
   
-  dbg(`\n📊 RESUMO FINAL:`);
-  dbg(`Pós Fixado: ${pctPos}%`);
-  dbg(`Pré Fixado: ${pctPre}%`);
-  dbg(`Inflação: ${inflacaoPct}%`);
-  dbg(`Multimercado: ${pctMulti}%`);
-  dbg(`Renda Variável Brasil: ${pctRVBrasil}%`);
-  dbg(`Alternativo: ${pctAlternativo}%`);
+  dbg(`\n📊 RESULTADOS DA EXTRAÇÃO:`);
+  dbg(`Pós Fixado: ${pctPos !== null ? pctPos + '%' : 'NÃO ENCONTRADO'}`);
+  dbg(`Pré Fixado: ${pctPre !== null ? pctPre + '%' : 'NÃO ENCONTRADO'}`);
+  dbg(`Inflação: ${pctInf !== null ? pctInf + '%' : 'NÃO ENCONTRADO'}`);
+  dbg(`Multimercado: ${pctMulti !== null ? pctMulti + '%' : 'NÃO ENCONTRADO'}`);
+  dbg(`Renda Variável Brasil: ${pctRendaVariavel !== null ? pctRendaVariavel + '%' : 'NÃO ENCONTRADO'}`);
+  dbg(`Alternativo: ${pctAlternativo !== null ? pctAlternativo + '%' : 'NÃO ENCONTRADO'}`);
   dbg(`Renda Variável TOTAL: ${rendaVariavelTotal}%`);
   
   return { res, patrimonio };
@@ -806,9 +339,17 @@ function renderInputs() {
     row.innerHTML = `<div class="dot8 ${CORES[idx]}"></div><span class="classe-nome">${cl}</span><input class="classe-input" type="number" step="any" min="0" max="100" value="0"><span class="pct-label">%</span>`;
     c.appendChild(row);
     inputsMap[cl] = row.querySelector('input');
-    inputsMap[cl].addEventListener('input', atualizarTotal);
+    inputsMap[cl].addEventListener('input', actualizarTotal);
   });
   atualizarTotal();
+}
+
+// Corrigindo nome da função (estava em português misturado)
+function actualizarTotal() {
+  let t = 0;
+  CLASSES.forEach(c => { t += parseFloat(inputsMap[c]?.value || 0) || 0; });
+  document.getElementById('totalVal').textContent = fmtPct(t);
+  document.getElementById('totalBar').className = 'total-bar ' + (Math.abs(t - 100) < 0.1 ? 'total-ok' : 'total-err');
 }
 
 function renderAlvo() {
@@ -875,11 +416,11 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
     if (encontrou) {
       setStatus('✅ PDF importado com sucesso!', 'ok');
       if (patrimonio > 0) {
-        document.getElementById('patrimVal').textContent = fmtBRL(patrimonio);
+        document.getElementById('patrimVal').innerHTML = fmtBRL(patrimonio);
         document.getElementById('patrimTag').classList.add('show');
       }
     } else {
-      setStatus('❌ Não foi possível extrair os dados. Verifique o debug.', 'err');
+      setStatus('❌ Não foi possível extrair os dados. Veja o debug acima.', 'err');
     }
   } catch (e) {
     setStatus('Erro: ' + e.message, 'err'); dbg('ERRO: ' + e.message);
@@ -901,37 +442,28 @@ document.getElementById('btnLimpar').addEventListener('click', () => {
 });
 
 document.getElementById('btnAnalisar').addEventListener('click', analisar);
-document.getElementById('themeToggle').addEventListener('click', toggleTheme);
-
-function toggleTheme() {
+document.getElementById('themeToggle').addEventListener('click', () => {
   const body = document.body;
-  const toggleBtn = document.getElementById('themeToggle');
+  const btn = document.getElementById('themeToggle');
   if (body.classList.contains('light')) {
     body.classList.remove('light');
     localStorage.setItem('theme', 'dark');
-    toggleBtn.textContent = '🌙';
+    btn.textContent = '🌙';
   } else {
     body.classList.add('light');
     localStorage.setItem('theme', 'light');
-    toggleBtn.textContent = '☀️';
+    btn.textContent = '☀️';
   }
-}
+});
 
-function initTheme() {
-  const savedTheme = localStorage.getItem('theme');
-  if (savedTheme === 'light') {
+(function init() {
+  const saved = localStorage.getItem('theme');
+  if (saved === 'light') {
     document.body.classList.add('light');
     document.getElementById('themeToggle').textContent = '☀️';
-  } else {
-    document.body.classList.remove('light');
-    document.getElementById('themeToggle').textContent = '🌙';
   }
-}
-
-(function() {
   document.getElementById('hDate').textContent = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
   renderInputs(); renderPerfis(); renderAlvo();
-  initTheme();
 })();
 </script>
 </body>
