@@ -26,8 +26,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);mar
 .status-ok{background:var(--green-bg);color:var(--green);border:1px solid rgba(46,204,113,.2)}
 .status-err{background:var(--red-bg);color:var(--red);border:1px solid rgba(231,76,60,.2)}
 .perfis-row{display:flex;gap:8px;margin-bottom:1.5rem}
-.perfil-btn{flex:1;padding:10px;border-radius:10px;font-size:13px;cursor:pointer;border:1px solid var(--border2);background:var(--bg2);color:var(--text2)}
-.perfil-btn.ativo{background:var(--gold);color:#000;font-weight:600}
+.perfil-btn{flex:1;padding:10px;border-radius:10px;font-size:13px;cursor:pointer;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);transition: 0.2s;}
+.perfil-btn.ativo{background:var(--gold);color:#000;font-weight:600;border-color:var(--gold)}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
 @media(max-width:700px){.grid2{grid-template-columns:1fr}}
 .classe-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
@@ -40,7 +40,6 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);mar
 .overlay.show{display:flex}
 .patrim-tag{display:none;margin-top:10px;color:var(--gold);font-size:13px;font-weight:600}
 .patrim-tag.show{display:block}
-.debug-box{display:none;background:#000;color:#0f0;padding:10px;font-family:monospace;font-size:10px;margin-top:10px;max-height:100px;overflow-y:auto}
 </style>
 </head>
 <body>
@@ -59,11 +58,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);mar
       <label class="file-label" for="filePdf"><span id="fileName">Selecionar PDF da XP</span></label>
       <input type="file" id="filePdf" accept=".pdf">
       <button class="btn btn-gold" id="btnImportar">Importar</button>
-      <button class="btn btn-ghost" id="btnLimpar">Limpar</button>
+      <button class="btn btn-ghost" id="idLimpar" onclick="limparTudo()">Limpar</button>
     </div>
     <div id="status" class="status"></div>
     <div id="patrimTag" class="patrim-tag"></div>
-    <div id="debugBox" class="debug-box"></div>
   </div>
 
   <div class="perfis-row" id="perfisRow"></div>
@@ -77,7 +75,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);mar
       </div>
     </div>
     <div class="card">
-      <div class="card-title">Alvo: <span id="perfilLabel">Moderado</span></div>
+      <div class="card-title">Alvo: <span id="perfilLabel" style="color:var(--gold)">Moderado</span></div>
       <div id="tabelaAlvo"></div>
       <button class="btn btn-full" id="btnAnalisar">Analisar Rebalanceamento</button>
     </div>
@@ -102,8 +100,8 @@ const CLASSES = ["Pós Fixado", "Pré Fixado", "Inflação", "Multimercado", "Re
 let perfilAtivo = "Moderado";
 let inputsMap = {};
 
-function clean(s) { 
-    return s.normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[()]/g, ""); 
+function normalizar(s) {
+    return s.normalize('NFD').replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[()]/g, " ");
 }
 
 async function extrairDadosPDF(file) {
@@ -114,9 +112,7 @@ async function extrairDadosPDF(file) {
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
     const tc = await page.getTextContent();
-    tc.items.forEach(it => {
-        if(it.str.trim()) tokens.push(it.str.trim());
-    });
+    tc.items.forEach(it => { if(it.str.trim()) tokens.push(it.str.trim()); });
   }
 
   const res = {};
@@ -129,11 +125,10 @@ async function extrairDadosPDF(file) {
   ];
 
   tokens.forEach((t, i) => {
-    const tClean = clean(t);
+    const tClean = normalizar(t);
     mapeamento.forEach(m => {
-      if (m.keys.some(k => tClean.includes(k)) && !res[m.id]) {
-        // Encontrou a classe, agora caça o próximo % nos próximos 15 tokens
-        for (let k = i + 1; k < i + 15; k++) {
+      if (tClean.includes(m.keys[0]) && !res[m.id]) {
+        for (let k = i + 1; k < i + 12; k++) {
           if (tokens[k] && tokens[k].includes('%')) {
             const num = tokens[k].match(/(\d+[,.]\d+)/);
             if (num) {
@@ -146,12 +141,12 @@ async function extrairDadosPDF(file) {
     });
   });
 
-  // Busca do Patrimônio Bruto
   let patrimonio = 0;
   tokens.forEach((t, i) => {
-      if (clean(t) === "patrimonio" && clean(tokens[i+1]) === "total") {
-          for (let k = i; k < i+10; k++) {
-              if (tokens[k].includes('R$')) {
+      const t2 = tokens[i+1] ? normalizar(tokens[i+1]) : "";
+      if (normalizar(t) === "patrimonio" && t2 === "total") {
+          for (let k = i; k < i+15; k++) {
+              if (tokens[k] && tokens[k].includes('R$')) {
                   let v = tokens[k].replace('R$', '').trim() || tokens[k+1];
                   patrimonio = parseFloat(v.replace(/\./g, '').replace(',', '.'));
                   break;
@@ -164,18 +159,23 @@ async function extrairDadosPDF(file) {
 }
 
 function renderInputs() {
-  const c = document.getElementById('inputsAtual'); c.innerHTML = '';
+  const container = document.getElementById('inputsAtual');
+  container.innerHTML = '';
   CLASSES.forEach(cl => {
-    const row = document.createElement('div'); row.className = 'classe-row';
+    const row = document.createElement('div');
+    row.className = 'classe-row';
     row.innerHTML = `<span style="flex:1;font-size:13px">${cl}</span><input class="classe-input" type="number" step="any" value="0"><span>%</span>`;
-    c.appendChild(row);
+    container.appendChild(row);
     inputsMap[cl] = row.querySelector('input');
-    inputsMap[cl].addEventListener('input', () => {
-        let t = 0; CLASSES.forEach(x => t += parseFloat(inputsMap[x].value || 0));
-        document.getElementById('totalVal').textContent = t.toFixed(2).replace('.', ',') + '%';
-        document.getElementById('totalBar').className = 'total-bar ' + (Math.abs(t-100) < 0.5 ? 'total-ok' : 'total-err');
-    });
+    inputsMap[cl].addEventListener('input', atualizarTotal);
   });
+}
+
+function atualizarTotal() {
+    let t = 0;
+    CLASSES.forEach(x => t += parseFloat(inputsMap[x].value || 0));
+    document.getElementById('totalVal').textContent = t.toFixed(2).replace('.', ',') + '%';
+    document.getElementById('totalBar').className = 'total-bar ' + (Math.abs(t-100) < 0.5 ? 'total-ok' : 'total-err');
 }
 
 function renderAlvo() {
@@ -183,6 +183,30 @@ function renderAlvo() {
   document.getElementById('perfilLabel').textContent = perfilAtivo;
   document.getElementById('tabelaAlvo').innerHTML = CLASSES.map(c => `
     <div class="alvo-row"><span>${c}</span><strong>${rec[c]}%</strong></div>`).join('');
+}
+
+function renderPerfis() {
+  const container = document.getElementById('perfisRow');
+  container.innerHTML = Object.keys(PERFIS).map(p => 
+    `<button class="perfil-btn ${p === perfilAtivo ? 'ativo' : ''}" onclick="trocarPerfil('${p}')">${p}</button>`
+  ).join('');
+}
+
+function trocarPerfil(p) {
+    perfilAtivo = p;
+    renderPerfis();
+    renderAlvo();
+    document.getElementById('resultArea').style.display = 'none';
+}
+
+function limparTudo() {
+    CLASSES.forEach(c => inputsMap[c].value = 0);
+    atualizarTotal();
+    document.getElementById('status').className = 'status';
+    document.getElementById('patrimTag').className = 'patrim-tag';
+    document.getElementById('resultArea').style.display = 'none';
+    document.getElementById('filePdf').value = '';
+    document.getElementById('fileName').textContent = 'Selecionar PDF da XP';
 }
 
 document.getElementById('btnImportar').addEventListener('click', async () => {
@@ -198,16 +222,20 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
         encontrados++;
       }
     });
+    const st = document.getElementById('status');
     if (encontrados > 0) {
-      document.getElementById('status').innerHTML = "Importado!";
-      document.getElementById('status').className = "status show status-ok";
-      if (patrimonio) document.getElementById('patrimTag').innerHTML = "Patrimônio: R$ " + patrimonio.toLocaleString('pt-BR');
-      document.getElementById('patrimTag').classList.add('show');
+      st.innerHTML = "Importado com sucesso!";
+      st.className = "status show status-ok";
+      if (patrimonio) {
+          document.getElementById('patrimTag').innerHTML = "Patrimônio: R$ " + patrimonio.toLocaleString('pt-BR', {minimumFractionDigits:2});
+          document.getElementById('patrimTag').className = "patrim-tag show";
+      }
     } else {
-      document.getElementById('status').innerHTML = "Não foi possível ler as classes. Verifique o PDF.";
-      document.getElementById('status').className = "status show status-err";
+      st.innerHTML = "Não foi possível ler as classes. Verifique se o PDF é o relatório de performance da XP.";
+      st.className = "status show status-err";
     }
-  } catch (e) { alert("Erro: " + e.message); }
+    atualizarTotal();
+  } catch (e) { alert("Erro ao processar: " + e.message); }
   document.getElementById('overlay').classList.remove('show');
 });
 
@@ -219,17 +247,21 @@ document.getElementById('btnAnalisar').addEventListener('click', () => {
         const diff = alvo[c] - atual;
         const acao = diff > 0.5 ? '<span style="color:var(--red)">ALOCAR</span>' : (diff < -0.5 ? '<span style="color:var(--amber)">RETIRAR</span>' : '<span style="color:var(--green)">MANTER</span>');
         return `<div style="padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;display:flex;justify-content:space-between">
-            <span>${c} (${atual}% → ${alvo[c]}%)</span> <strong>${acao}</strong>
+            <span>${c} (${atual.toFixed(2)}% → ${alvo[c]}%)</span> <strong>${acao}</strong>
         </div>`;
     }).join('');
 });
 
 document.getElementById('filePdf').addEventListener('change', (e) => {
-    document.getElementById('fileName').textContent = e.target.files[0].name;
+    if(e.target.files[0]) document.getElementById('fileName').textContent = e.target.files[0].name;
 });
 
-renderInputs(); renderAlvo();
-document.getElementById('perfisRow').innerHTML = Object.keys(PERFIS).map(p => `<button class="perfil-btn ${p === perfilAtivo ? 'ativo' : ''}" onclick="perfilAtivo='${p}'; location.reload();">${p}</button>`).join('');
+window.onload = () => {
+    document.getElementById('hDate').textContent = new Date().toLocaleDateString('pt-BR', {day:'2-digit', month:'long', year:'numeric'});
+    renderInputs(); 
+    renderPerfis(); 
+    renderAlvo();
+};
 </script>
 </body>
 </html>
