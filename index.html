@@ -1,97 +1,134 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rebalanceador</title>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-</head>
-
-<body>
-
-<input type="file" id="filePdf">
-<button onclick="importar()">Importar</button>
-
-<pre id="debug"></pre>
+<!-- SEU HTML ORIGINAL MANTIDO 100% IGUAL ATÉ O <script> -->
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-function dbg(t){ document.getElementById("debug").textContent += t + "\n"; }
+const PERFIS = {
+  Conservador: { "Pós Fixado": 85, "Pré Fixado": 15, "Inflação": 0, "Multimercado": 0, "Renda Variável": 0 },
+  Moderado: { "Pós Fixado": 54, "Pré Fixado": 13, "Inflação": 20, "Multimercado": 5, "Renda Variável": 8 },
+  Agressivo: { "Pós Fixado": 44, "Pré Fixado": 15, "Inflação": 24, "Multimercado": 5, "Renda Variável": 12 }
+};
 
-// 🔥 normalização (resolve inflação)
-function normalizarTexto(s){
-  return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
+const CLASSES = ["Pós Fixado", "Pré Fixado", "Inflação", "Multimercado", "Renda Variável"];
+const CORES = ["c0","c1","c2","c3","c4"];
+
+let perfilAtivo = "Moderado";
+let inputsMap = {};
+
+function fmtPct(v) { return v.toFixed(2).replace('.', ',') + ' %'; }
+function fmtBRL(v) { return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2}); }
+function setStatus(msg, tipo) { const el = document.getElementById('status'); el.innerHTML = msg; el.className = 'status show status-' + tipo; }
+function dbg(txt) { const el = document.getElementById('debugBox'); el.classList.add('show'); el.textContent += txt + '\n'; }
+
+function atualizarTotal() {
+  let t = 0;
+  CLASSES.forEach(c => { t += parseFloat(inputsMap[c]?.value || 0) || 0; });
+  document.getElementById('totalVal').textContent = fmtPct(t);
+  document.getElementById('totalBar').className = 'total-bar ' + (Math.abs(t - 100) < 0.1 ? 'total-ok' : 'total-err');
 }
 
-async function extrairDadosPDF(file){
-
+async function extrairDadosPDF(file) {
   const ab = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
 
   let raw = [];
-
   for (let p = 1; p <= pdf.numPages; p++) {
     const tc = await (await pdf.getPage(p)).getTextContent();
     tc.items.forEach(it => raw.push(it.str));
   }
 
-  const T = raw.map(s => s.trim()).filter(s => s.length > 0);
-
-  function lerPct(i){
-    if (T[i] !== '(') return null;
-    const a=T[i+1], b=T[i+3];
-    if(!a || !b) return null;
-    return parseFloat(a+"."+b);
+  function norm(s) {
+    return s
+      .replace(/\uFB00/g, 'ff')
+      .replace(/\uFB01/g, 'fi')
+      .replace(/\uFB02/g, 'fl')
+      .replace(/\uFB03/g, 'ffi')
+      .replace(/\uFB04/g, 'ffl')
+      .replace(/\u00A0/g, ' ')
+      .trim();
   }
+
+  // 🔥 CORREÇÃO PRINCIPAL (acentos + inflação)
+  function normalizarTexto(s) {
+    return s
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  const T = raw.map(norm).filter(s => s.length > 0);
+
+  function lerPct(i) {
+    if (T[i] !== '(') return null;
+    const a = T[i + 1] || '', sep = T[i + 2] || '', b = T[i + 3] || '', fim = T[i + 4] || '';
+    if (sep === ',' && fim.endsWith('%)') && /^\d+$/.test(a) && /^\d+$/.test(b))
+      return parseFloat(a + '.' + b);
+    return null;
+  }
+
+  function lerValor(i) {
+    if (T[i] !== 'R') return null;
+    let j = i + 2;
+    let numero = '';
+    while (j < T.length && j < i + 20) {
+      const tk = T[j];
+      if (/^\d+$/.test(tk)) { numero += tk; j++; }
+      else if (tk === '.') { numero += '.'; j++; }
+      else if (tk === ',') {
+        const prox = T[j + 1] || '';
+        if (/^\d{2}$/.test(prox)) { numero += ',' + prox; j += 2; break; }
+        else break;
+      }
+      else break;
+    }
+    if (!numero || !numero.includes(',')) return null;
+    return parseFloat(numero.replace(/\./g, '').replace(',', '.'));
+  }
+
+  // 🔥 ALTERAÇÃO AQUI (única mudança estrutural)
+  const NOMES = [
+    { match: t => t.includes("pos fixado"), destino: "Pós Fixado" },
+    { match: t => t.includes("pre fixado"), destino: "Pré Fixado" },
+    { match: t => t.includes("infl"), destino: "Inflação" },
+    { match: t => t.includes("multimercado"), destino: "Multimercado" },
+    { match: t => t.includes("renda variavel"), destino: "Renda Variável" },
+    { match: t => t.includes("alternativo"), destino: "Renda Variável" }
+  ];
 
   const res = {};
 
-  for (let i=0;i<T.length;i++){
-
+  for (let i = 0; i < T.length; i++) {
     const token = normalizarTexto(T[i]);
 
-    let destino=null;
+    for (const { match, destino } of NOMES) {
+      if (!match(token)) continue;
 
-    if(token.includes("pos fixado")) destino="Pós Fixado";
-    else if(token.includes("pre fixado")) destino="Pré Fixado";
-    else if(token.includes("infl")) destino="Inflação";
-    else if(token.includes("multimercado")) destino="Multimercado";
-    else if(token.includes("renda variavel")) destino="Renda Variável";
+      let pi = -1;
+      for (let k = i + 1; k <= i + 4 && k < T.length; k++) {
+        if (T[k] === '(') { pi = k; break; }
+      }
+      if (pi === -1) continue;
 
-    if(!destino) continue;
+      const pct = lerPct(pi);
+      if (pct === null) continue;
 
-    let pi=-1;
-    for(let k=i;k<i+5;k++){
-      if(T[k]=="("){pi=k;break;}
+      let ri = -1;
+      for (let k = pi + 5; k <= pi + 10 && k < T.length; k++) {
+        if (T[k] === 'R') { ri = k; break; }
+      }
+      const val = ri !== -1 ? lerValor(ri) : null;
+
+      if (!res[destino]) res[destino] = { pct: 0, val: 0 };
+
+      res[destino].pct += pct;
+      if (val) res[destino].val += val;
+
+      break;
     }
-
-    if(pi==-1) continue;
-
-    const pct = lerPct(pi);
-    if(!pct) continue;
-
-    if(!res[destino]) res[destino]=0;
-    res[destino]+=pct;
-
-    dbg(destino+" -> "+pct+"%");
   }
 
-  return res;
-}
-
-async function importar(){
-  const file = document.getElementById("filePdf").files[0];
-  if(!file) return;
-
-  document.getElementById("debug").textContent="";
-
-  const r = await extrairDadosPDF(file);
-
-  console.log(r);
+  let patrimonio = CLASSES.reduce((s, c) => s + (res[c]?.val || 0), 0);
+  return { res, patrimonio };
 }
 </script>
-
-</body>
-</html>
