@@ -157,29 +157,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ========== PERCENTUAIS CORRETOS (com base na imagem enviada) ==========
 const PERFIS = {
-  Conservador: {
-    "Pós Fixado": 85,
-    "Pré Fixado": 15,
-    "Inflação": 0,
-    "Multimercado": 0,
-    "Renda Variável": 0
-  },
-  Moderado: {
-    "Pós Fixado": 54,
-    "Pré Fixado": 13,
-    "Inflação": 20,
-    "Multimercado": 5,
-    "Renda Variável": 8      // 4% + 4% (Renda Variável Global)
-  },
-  Agressivo: {
-    "Pós Fixado": 44,
-    "Pré Fixado": 15,
-    "Inflação": 24,
-    "Multimercado": 5,
-    "Renda Variável": 12     // 6% + 6% (Renda Variável Global)
-  }
+  Conservador: { "Pós Fixado": 85, "Pré Fixado": 15, "Inflação": 0, "Multimercado": 0, "Renda Variável": 0 },
+  Moderado: { "Pós Fixado": 54, "Pré Fixado": 13, "Inflação": 20, "Multimercado": 5, "Renda Variável": 8 },
+  Agressivo: { "Pós Fixado": 44, "Pré Fixado": 15, "Inflação": 24, "Multimercado": 5, "Renda Variável": 12 }
 };
 
 const CLASSES = ["Pós Fixado", "Pré Fixado", "Inflação", "Multimercado", "Renda Variável"];
@@ -188,7 +169,6 @@ const CORES = ["c0","c1","c2","c3","c4"];
 let perfilAtivo = "Moderado";
 let inputsMap = {};
 
-// ========== FUNÇÕES AUXILIARES ==========
 function fmtPct(v) { return v.toFixed(2).replace('.', ',') + ' %'; }
 function fmtBRL(v) { return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2}); }
 function setStatus(msg, tipo) { const el = document.getElementById('status'); el.innerHTML = msg; el.className = 'status show status-' + tipo; }
@@ -200,7 +180,6 @@ function atualizarTotal() {
   document.getElementById('totalBar').className = 'total-bar ' + (Math.abs(t - 100) < 0.1 ? 'total-ok' : 'total-err');
 }
 
-// ========== EXTRAÇÃO PDF CORRIGIDA ==========
 async function extrairDadosPDF(file) {
   const ab = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
@@ -245,14 +224,14 @@ async function extrairDadosPDF(file) {
     return parseFloat(numero.replace(/\./g, '').replace(',', '.'));
   }
 
-  // Nomes e seus destinos (Alternativo → Renda Variável)
+  // NOMES COM REGEX CORRIGIDO PARA INFLACAO
   const NOMES = [
     { re: /^P[oó]s Fixado$/i,           key: "Pós Fixado", destino: "Pós Fixado" },
     { re: /^Pr[eé] Fixado$/i,           key: "Pré Fixado", destino: "Pré Fixado" },
-    { re: /^Infla[cç][aã]o$/i,          key: "Inflação", destino: "Inflação" },
+    { re: /^Inflação$/i,                key: "Inflação", destino: "Inflação" },      // ← CORRIGIDO
     { re: /^Multimercado$/i,            key: "Multimercado", destino: "Multimercado" },
     { re: /^Renda Vari[aá]vel Brasil$/i, key: "Renda Variável Brasil", destino: "Renda Variável" },
-    { re: /^Alternativo$/i,             key: "Alternativo", destino: "Renda Variável" }  // ← ALTERNATIVO VAI PARA RENDA VARIÁVEL
+    { re: /^Alternativo$/i,             key: "Alternativo", destino: "Renda Variável" }
   ];
 
   const res = {};
@@ -287,7 +266,7 @@ async function extrairDadosPDF(file) {
     }
   }
 
-  // Recalcular percentuais se necessário
+  // Recalcular percentuais
   const totVal = CLASSES.reduce((s, c) => s + (res[c]?.val || 0), 0);
   if (totVal > 0) {
     for (const c of CLASSES) {
@@ -298,7 +277,7 @@ async function extrairDadosPDF(file) {
     }
   }
 
-  // Patrimônio total
+  // Patrimônio
   let patrimonio = totVal;
   for (let i = 0; i < T.length - 3; i++) {
     if (/PATRIM/i.test(T[i]) && /TOTAL/i.test(T[i + 1]) && /BRUTO/i.test(T[i + 2])) {
@@ -315,7 +294,6 @@ async function extrairDadosPDF(file) {
   return { res, patrimonio };
 }
 
-// ========== RENDER ==========
 function renderInputs() {
   const c = document.getElementById('inputsAtual'); c.innerHTML = '';
   CLASSES.forEach((cl, idx) => {
@@ -369,7 +347,6 @@ function analisar() {
   area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
-// ========== EVENTOS ==========
 document.getElementById('filePdf').addEventListener('change', function() {
   document.getElementById('fileName').textContent = this.files[0]?.name || 'Selecionar arquivo PDF...';
 });
@@ -415,7 +392,6 @@ document.getElementById('btnLimpar').addEventListener('click', () => {
 
 document.getElementById('btnAnalisar').addEventListener('click', analisar);
 
-// ========== INIT ==========
 (function() {
   document.getElementById('hDate').textContent = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
   renderInputs(); renderPerfis(); renderAlvo();
