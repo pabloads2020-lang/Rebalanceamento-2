@@ -3,83 +3,49 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rebalanceador de Carteira · PBF</title>
+<title>Rebalanceador de Carteira · XP</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
-/* ===== CORES PADRÃO (MODO ESCURO) ===== */
 :root {
-  --bg: #0e1117;
-  --bg2: #161b25;
-  --bg3: #1c2333;
-  --border: rgba(255,255,255,0.07);
-  --border2: rgba(255,255,255,0.13);
-  --gold: #f5c842;
-  --gold2: #e0a800;
-  --text: #e8eaf0;
-  --text2: #8b93a7;
-  --text3: #555e72;
-  --green: #2ecc71;
-  --green-bg: rgba(46,204,113,0.12);
-  --red: #e74c3c;
-  --red-bg: rgba(231,76,60,0.12);
-  --amber: #f39c12;
-  --amber-bg: rgba(243,156,18,0.12);
-  --blue: #3498db;
-  --blue-bg: rgba(52,152,219,0.12);
-  --header-bg: #161b25;
-  --header-border: rgba(255,255,255,0.07);
-  --card-bg: #161b25;
-  --card-border: rgba(255,255,255,0.07);
-  --input-bg: #1c2333;
-  --input-border: rgba(255,255,255,0.13);
-  --alvo-bar-bg: #1c2333;
-  --resumo-item-bg: #1c2333;
-  --debug-bg: #1c2333;
-  --overlay-bg: rgba(14,17,23,.88);
+  --bg: #0e1117; --bg2: #161b25; --bg3: #1c2333;
+  --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
+  --gold: #f5c842; --gold2: #e0a800;
+  --text: #e8eaf0; --text2: #8b93a7; --text3: #555e72;
+  --green: #2ecc71; --green-bg: rgba(46,204,113,0.12);
+  --red: #e74c3c; --red-bg: rgba(231,76,60,0.12);
+  --amber: #f39c12; --amber-bg: rgba(243,156,18,0.12);
+  --blue: #3498db; --blue-bg: rgba(52,152,219,0.12);
+  --header-bg: #161b25; --header-border: rgba(255,255,255,0.07);
+  --card-bg: #161b25; --card-border: rgba(255,255,255,0.07);
+  --input-bg: #1c2333; --input-border: rgba(255,255,255,0.13);
+  --alvo-bar-bg: #1c2333; --resumo-item-bg: #1c2333;
+  --debug-bg: #1c2333; --overlay-bg: rgba(14,17,23,.88);
   --footer-border: rgba(255,255,255,0.07);
 }
-
 body.light {
-  --bg: #f5f7fa;
-  --bg2: #ffffff;
-  --bg3: #f0f2f5;
-  --border: rgba(0,0,0,0.08);
-  --border2: rgba(0,0,0,0.12);
-  --gold: #d4a017;
-  --gold2: #b8860b;
-  --text: #1a1a2e;
-  --text2: #4a5568;
-  --text3: #718096;
-  --green: #27ae60;
-  --green-bg: rgba(39,174,96,0.1);
-  --red: #e74c3c;
-  --red-bg: rgba(231,76,60,0.1);
-  --amber: #e67e22;
-  --amber-bg: rgba(230,126,34,0.1);
-  --blue: #2980b9;
-  --blue-bg: rgba(41,128,185,0.1);
-  --header-bg: #ffffff;
-  --header-border: rgba(0,0,0,0.08);
-  --card-bg: #ffffff;
-  --card-border: rgba(0,0,0,0.08);
-  --input-bg: #ffffff;
-  --input-border: #e2e8f0;
-  --alvo-bar-bg: #e2e8f0;
-  --resumo-item-bg: #f7fafc;
-  --debug-bg: #f7fafc;
-  --overlay-bg: rgba(255,255,255,.95);
+  --bg: #f5f7fa; --bg2: #ffffff; --bg3: #f0f2f5;
+  --border: rgba(0,0,0,0.08); --border2: rgba(0,0,0,0.12);
+  --gold: #d4a017; --gold2: #b8860b;
+  --text: #1a1a2e; --text2: #4a5568; --text3: #718096;
+  --green: #27ae60; --green-bg: rgba(39,174,96,0.1);
+  --red: #e74c3c; --red-bg: rgba(231,76,60,0.1);
+  --amber: #e67e22; --amber-bg: rgba(230,126,34,0.1);
+  --header-bg: #ffffff; --header-border: rgba(0,0,0,0.08);
+  --card-bg: #ffffff; --card-border: rgba(0,0,0,0.08);
+  --input-bg: #ffffff; --input-border: #e2e8f0;
+  --alvo-bar-bg: #e2e8f0; --resumo-item-bg: #f7fafc;
+  --debug-bg: #f7fafc; --overlay-bg: rgba(255,255,255,.95);
   --footer-border: rgba(0,0,0,0.08);
 }
-
-* { box-sizing: border-box; margin: 0; padding: 0; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; }
+* { box-sizing: border-box; margin: 0; padding: 0; transition: all 0.2s ease; }
 body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 .header { background: var(--header-bg); border-bottom: 1px solid var(--header-border); padding: 0 2rem; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
 .header-logo { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; }
 .dot { width: 28px; height: 28px; background: var(--gold); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #000; }
 .header-right { display: flex; align-items: center; gap: 1rem; }
 .header-date { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
-.theme-toggle { background: var(--bg3); border: 1px solid var(--border2); border-radius: 30px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s; font-size: 18px; }
+.theme-toggle { background: var(--bg3); border: 1px solid var(--border2); border-radius: 30px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; }
 .theme-toggle:hover { border-color: var(--gold); transform: scale(1.05); }
 .main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
 .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
@@ -88,7 +54,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .file-label { display: flex; align-items: center; gap: 8px; background: var(--bg3); border: 1.5px dashed var(--border2); border-radius: 8px; padding: 9px 14px; cursor: pointer; font-size: 13px; color: var(--text2); flex: 1; min-width: 180px; }
 .file-label:hover { border-color: var(--gold); color: var(--gold); }
 #filePdf { display: none; }
-.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; white-space: nowrap; }
 .btn-gold { background: var(--gold); color: #000; }
 .btn-gold:hover { background: var(--gold2); transform: translateY(-1px); }
 .btn-ghost { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
@@ -152,10 +118,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 </head>
 <body>
 
-<div class="overlay" id="overlay">
-  <div class="spin"></div>
-  <div class="spin-text">Processando PDF...</div>
-</div>
+<div class="overlay" id="overlay"><div class="spin"></div><div class="spin-text">Processando PDF...</div></div>
 
 <header class="header">
   <div class="header-logo"><div class="dot">XP</div>Rebalanceador de Carteira</div>
@@ -169,10 +132,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   <div class="card">
     <div class="card-title">Importar relatório XP (PDF)</div>
     <div class="upload-row">
-      <label class="file-label" for="filePdf">
-        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-        <span id="fileName">Selecionar arquivo PDF...</span>
-      </label>
+      <label class="file-label" for="filePdf"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><span id="fileName">Selecionar arquivo PDF...</span></label>
       <input type="file" id="filePdf" accept=".pdf">
       <button class="btn btn-gold" id="btnImportar">Importar PDF</button>
       <button class="btn btn-ghost" id="btnLimpar">Limpar</button>
@@ -242,67 +202,92 @@ async function extrairDadosPDF(file) {
   const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
   
   let textoCompleto = '';
-  
-  // Força a extração de CADA página individualmente
   for (let p = 1; p <= pdf.numPages; p++) {
     const page = await pdf.getPage(p);
     const tc = await page.getTextContent();
     const pageText = tc.items.map(item => item.str).join(' ');
     textoCompleto += pageText + '\n';
-    dbg(`📄 Página ${p}: ${tc.items.length} itens - amostra: "${pageText.substring(0, 100)}..."`);
+    dbg(`📄 Página ${p}: "${pageText.substring(0, 80)}..."`);
   }
   
-  dbg('\n--- TEXTO COMPLETO (BUSCA PADRONIZADA) ---');
-  
-  // Busca por "Estratégias" ou "COMPOSIÇÃO" para encontrar a seção correta
-  let secaoEstrategias = '';
-  const idxComposicao = textoCompleto.indexOf('COMPOSIÇÃO');
-  const idxEstrategias = textoCompleto.indexOf('Estratégias');
-  const idxPos = textoCompleto.indexOf('Pós Fixado');
-  
-  if (idxComposicao !== -1) {
-    secaoEstrategias = textoCompleto.substring(idxComposicao, idxComposicao + 2000);
-    dbg('✅ Seção "COMPOSIÇÃO" encontrada!');
-  } else if (idxEstrategias !== -1) {
-    secaoEstrategias = textoCompleto.substring(idxEstrategias, idxEstrategias + 2000);
-    dbg('✅ Seção "Estratégias" encontrada!');
-  } else if (idxPos !== -1) {
-    secaoEstrategias = textoCompleto.substring(idxPos, idxPos + 1500);
-    dbg('✅ Seção "Pós Fixado" encontrada!');
-  } else {
-    dbg('⚠️ Nenhuma seção de estratégias encontrada! Usando texto completo.');
-    secaoEstrategias = textoCompleto;
-  }
-  
-  dbg('\n--- CONTEÚDO DA SEÇÃO DE ESTRATÉGIAS ---');
-  dbg(secaoEstrategias.substring(0, 1000));
-  
-  // EXTRAIR TODOS OS PERCENTUAIS da seção de estratégias
-  function extrairPct(nome) {
-    // Padrão: "Pós Fixado (42,61%)" ou "Pós Fixado (42,61%)"
-    const regex = new RegExp(nome.split('').join('\\s*') + '\\s*\\((\\d{1,3},\\d{2})%\\)', 'i');
-    const match = secaoEstrategias.match(regex);
-    if (match) {
-      return parseFloat(match[1].replace(',', '.'));
+  // ===== EXTRAÇÃO ESPECIAL PARA INFLAÇÃO (palavra quebrada) =====
+  // Padrão encontrado: "In fl ação   ( 20 , 90 %)"
+  function extrairInfeccaoEspecial(texto) {
+    // Variações possíveis:
+    // "Inflação (20,90%)" normal
+    // "In fl ação (20,90%)" com espaços
+    // "Inﬂação" com caractere especial
+    // "In fl ação ( 20 , 90 %)" com espaços nos números
+    
+    const padroes = [
+      /Inflação\s*\((\d{1,3},\d{2})%\)/i,
+      /Inflação\s*\(\s*(\d{1,3})\s*,\s*(\d{2})\s*%\s*\)/i,
+      /In\s*fl\s*a[cç][aã]o\s*\((\d{1,3},\d{2})%\)/i,
+      /In\s*fl\s*a[cç][aã]o\s*\(\s*(\d{1,3})\s*,\s*(\d{2})\s*%\s*\)/i,
+      /Inﬂação\s*\((\d{1,3},\d{2})%\)/i,
+      /Inﬂação\s*\(\s*(\d{1,3})\s*,\s*(\d{2})\s*%\s*\)/i,
+      /In\s*fl\s*ação\s*\(\s*(\d{1,3})\s*,\s*(\d{2})\s*%\s*\)/i
+    ];
+    
+    for (const padrao of padroes) {
+      const match = texto.match(padrao);
+      if (match) {
+        if (match[1] && match[2]) {
+          return parseFloat(match[1] + '.' + match[2]);
+        } else if (match[1]) {
+          return parseFloat(match[1].replace(',', '.'));
+        }
+      }
     }
     return null;
   }
   
-  const pctPos = extrairPct('Pós Fixado');
-  const pctPre = extrairPct('Pré Fixado');
-  const pctInf = extrairPct('Inflação');
-  const pctMulti = extrairPct('Multimercado');
-  const pctRVBrasil = extrairPct('Renda Variável Brasil');
-  const pctAlternativo = extrairPct('Alternativo');
+  // Buscar a seção correta (páginas 5-9 normalmente)
+  let secaoAlvo = textoCompleto;
+  const idxComposicao = textoCompleto.indexOf('COMPOSIÇÃO');
+  const idxEstrategias = textoCompleto.indexOf('Estratégias');
+  const idxRentabilidade = textoCompleto.indexOf('RENTABILIDADE');
   
-  // Se não achou Renda Variável Brasil, tenta só "Renda Variável"
-  let pctRendaVariavel = pctRVBrasil;
-  if (!pctRendaVariavel) {
-    const rvMatch = secaoEstrategias.match(/Renda\s*Vari[áa]vel\s*\((\d{1,3},\d{2})%\)/i);
-    if (rvMatch) pctRendaVariavel = parseFloat(rvMatch[1].replace(',', '.'));
+  if (idxComposicao !== -1) {
+    secaoAlvo = textoCompleto.substring(idxComposicao, idxComposicao + 2000);
+    dbg('✅ Seção "COMPOSIÇÃO" encontrada!');
+  } else if (idxEstrategias !== -1) {
+    secaoAlvo = textoCompleto.substring(idxEstrategias, idxEstrategias + 2000);
+    dbg('✅ Seção "Estratégias" encontrada!');
+  } else if (idxRentabilidade !== -1) {
+    secaoAlvo = textoCompleto.substring(idxRentabilidade, idxRentabilidade + 2000);
+    dbg('✅ Seção "RENTABILIDADE" encontrada!');
   }
   
-  let rendaVariavelTotal = (pctRendaVariavel || 0) + (pctAlternativo || 0);
+  dbg('\n--- CONTEÚDO DA SEÇÃO ALVO (onde estão os percentuais) ---');
+  dbg(secaoAlvo.substring(0, 1200));
+  
+  // Extrair INFLAÇÃO com função especial
+  const pctInf = extrairInfeccaoEspecial(secaoAlvo);
+  if (pctInf) {
+    dbg(`\n🎯 INFLAÇÃO capturada: ${pctInf}%`);
+  } else {
+    dbg(`\n❌ INFLAÇÃO não encontrada na seção alvo`);
+  }
+  
+  // Extrair outros percentuais (com suporte para espaços)
+  function extrairPctFlexivel(nome) {
+    const partes = nome.split('');
+    const regex = new RegExp(partes.join('\\s*') + '\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{2})\\s*%\\s*\\)', 'i');
+    const match = secaoAlvo.match(regex);
+    if (match) {
+      return parseFloat(match[1] + '.' + match[2]);
+    }
+    return null;
+  }
+  
+  const pctPos = extrairPctFlexivel('Pós Fixado');
+  const pctPre = extrairPctFlexivel('Pré Fixado');
+  const pctMulti = extrairPctFlexivel('Multimercado');
+  const pctRVBrasil = extrairPctFlexivel('Renda Variável Brasil');
+  const pctAlternativo = extrairPctFlexivel('Alternativo');
+  
+  let rendaVariavelTotal = (pctRVBrasil || 0) + (pctAlternativo || 0);
   
   // Patrimônio
   let patrimonio = 0;
@@ -320,13 +305,13 @@ async function extrairDadosPDF(file) {
     "Renda Variável": { pct: rendaVariavelTotal, val: 0 }
   };
   
-  dbg(`\n📊 RESULTADOS DA EXTRAÇÃO:`);
-  dbg(`Pós Fixado: ${pctPos !== null ? pctPos + '%' : 'NÃO ENCONTRADO'}`);
-  dbg(`Pré Fixado: ${pctPre !== null ? pctPre + '%' : 'NÃO ENCONTRADO'}`);
-  dbg(`Inflação: ${pctInf !== null ? pctInf + '%' : 'NÃO ENCONTRADO'}`);
-  dbg(`Multimercado: ${pctMulti !== null ? pctMulti + '%' : 'NÃO ENCONTRADO'}`);
-  dbg(`Renda Variável Brasil: ${pctRendaVariavel !== null ? pctRendaVariavel + '%' : 'NÃO ENCONTRADO'}`);
-  dbg(`Alternativo: ${pctAlternativo !== null ? pctAlternativo + '%' : 'NÃO ENCONTRADO'}`);
+  dbg(`\n📊 RESULTADOS FINAIS:`);
+  dbg(`Pós Fixado: ${pctPos !== null ? pctPos + '%' : '❌'}`);
+  dbg(`Pré Fixado: ${pctPre !== null ? pctPre + '%' : '❌'}`);
+  dbg(`Inflação: ${pctInf !== null ? pctInf + '%' : '❌'}`);
+  dbg(`Multimercado: ${pctMulti !== null ? pctMulti + '%' : '❌'}`);
+  dbg(`Renda Variável Brasil: ${pctRVBrasil !== null ? pctRVBrasil + '%' : '❌'}`);
+  dbg(`Alternativo: ${pctAlternativo !== null ? pctAlternativo + '%' : '❌'}`);
   dbg(`Renda Variável TOTAL: ${rendaVariavelTotal}%`);
   
   return { res, patrimonio };
@@ -339,17 +324,9 @@ function renderInputs() {
     row.innerHTML = `<div class="dot8 ${CORES[idx]}"></div><span class="classe-nome">${cl}</span><input class="classe-input" type="number" step="any" min="0" max="100" value="0"><span class="pct-label">%</span>`;
     c.appendChild(row);
     inputsMap[cl] = row.querySelector('input');
-    inputsMap[cl].addEventListener('input', actualizarTotal);
+    inputsMap[cl].addEventListener('input', atualizarTotal);
   });
   atualizarTotal();
-}
-
-// Corrigindo nome da função (estava em português misturado)
-function actualizarTotal() {
-  let t = 0;
-  CLASSES.forEach(c => { t += parseFloat(inputsMap[c]?.value || 0) || 0; });
-  document.getElementById('totalVal').textContent = fmtPct(t);
-  document.getElementById('totalBar').className = 'total-bar ' + (Math.abs(t - 100) < 0.1 ? 'total-ok' : 'total-err');
 }
 
 function renderAlvo() {
@@ -420,7 +397,7 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
         document.getElementById('patrimTag').classList.add('show');
       }
     } else {
-      setStatus('❌ Não foi possível extrair os dados. Veja o debug acima.', 'err');
+      setStatus('❌ Não foi possível extrair os dados. Veja o debug.', 'err');
     }
   } catch (e) {
     setStatus('Erro: ' + e.message, 'err'); dbg('ERRO: ' + e.message);
