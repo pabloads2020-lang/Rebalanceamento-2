@@ -3,466 +3,409 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rebalanceador de Carteira · XP - FUNCIONANDO</title>
+<title>Rebalanceador de Carteira · XP</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
-  :root {
-    --bg: #0e1117; --bg2: #161b25; --bg3: #1c2333;
-    --border: rgba(255,255,255,0.07); --border2: rgba(255,255,255,0.13);
-    --gold: #f5c842; --gold2: #e0a800;
-    --text: #e8eaf0; --text2: #8b93a7; --text3: #555e72;
-    --green: #2ecc71; --green-bg: rgba(46,204,113,0.12);
-    --red: #e74c3c; --red-bg: rgba(231,76,60,0.12);
-    --amber: #f39c12; --amber-bg: rgba(243,156,18,0.12);
-    --radius: 12px; --radius-sm: 8px;
-  }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
-  .header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 0 2rem; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-  .header-logo { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; }
-  .header-logo .dot { width: 28px; height: 28px; background: var(--gold); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #000; }
-  .header-date { font-size: 12px; color: var(--text3); font-family: 'DM Mono', monospace; }
-  .main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-  .upload-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.5rem 2rem; margin-bottom: 1.5rem; }
-  .upload-title { font-size: 13px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem; }
-  .upload-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-  .file-label { display: flex; align-items: center; gap: 8px; background: var(--bg3); border: 1px dashed var(--border2); border-radius: var(--radius-sm); padding: 10px 16px; cursor: pointer; font-size: 13px; color: var(--text2); flex: 1; min-width: 200px; }
-  .file-label:hover { border-color: var(--gold); color: var(--gold); }
-  #filePdf { display: none; }
-  #fileNameDisplay { font-size: 12px; color: var(--text2); font-family: 'DM Mono', monospace; overflow: hidden; text-overflow: ellipsis; }
-  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 20px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: all .15s; white-space: nowrap; }
-  .btn-gold { background: var(--gold); color: #000; }
-  .btn-gold:hover { background: var(--gold2); transform: translateY(-1px); }
-  .btn-ghost { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
-  .btn-ghost:hover { border-color: var(--red); color: var(--red); background: var(--red-bg); }
-  .btn-analyze { background: var(--gold); color: #000; font-size: 14px; font-weight: 600; width: 100%; padding: 12px; justify-content: center; margin-top: 1rem; border-radius: var(--radius); }
-  .status-bar { display: none; align-items: center; gap: 8px; padding: 10px 14px; border-radius: var(--radius-sm); font-size: 13px; margin-top: 1rem; }
-  .status-bar.show { display: flex; }
-  .status-ok { background: var(--green-bg); color: var(--green); border: 1px solid rgba(46,204,113,0.2); }
-  .status-err { background: var(--red-bg); color: var(--red); border: 1px solid rgba(231,76,60,0.2); }
-  .patrimonio-tag { display: inline-flex; align-items: center; gap: 6px; background: rgba(245,200,66,0.1); border: 1px solid rgba(245,200,66,0.25); border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 500; color: var(--gold); margin-top: .75rem; }
-  .perfis-section { margin-bottom: 1.5rem; }
-  .section-label { font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: .75rem; }
-  .perfis-row { display: flex; gap: 8px; flex-wrap: wrap; }
-  .perfil-btn { flex: 1; min-width: 100px; padding: 10px 16px; border-radius: var(--radius); font-size: 13px; font-weight: 500; cursor: pointer; border: 1px solid var(--border2); background: var(--bg2); color: var(--text2); text-align: center; }
-  .perfil-btn.ativo { background: var(--gold); border-color: var(--gold); color: #000; font-weight: 600; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-  @media(max-width:768px){ .grid2 { grid-template-columns: 1fr; } }
-  .panel { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; }
-  .panel-title { font-size: 12px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem; padding-bottom: .75rem; border-bottom: 1px solid var(--border); }
-  .classe-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-  .classe-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .classe-nome { flex: 1; font-size: 13px; }
-  .classe-input { width: 70px; padding: 6px 10px; text-align: right; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; font-family: 'DM Mono', monospace; }
-  .classe-input:focus { outline: none; border-color: var(--gold); }
-  .total-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; margin-top: .75rem; }
-  .total-ok { background: var(--green-bg); color: var(--green); border: 1px solid rgba(46,204,113,0.2); }
-  .total-err { background: var(--red-bg); color: var(--red); border: 1px solid rgba(231,76,60,0.2); }
-  .alvo-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
-  .alvo-nome { flex: 1; font-size: 13px; }
-  .alvo-pct { font-size: 13px; font-weight: 600; font-family: 'DM Mono', monospace; color: var(--gold); }
-  .alvo-bar-wrap { width: 60px; height: 4px; background: var(--bg3); border-radius: 2px; overflow: hidden; }
-  .alvo-bar-fill { height: 100%; background: var(--gold); border-radius: 2px; transition: width .4s ease; }
-  .resultado-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem 1.5rem; margin-top: 1.5rem; }
-  .resultado-title { font-size: 12px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1rem; padding-bottom: .75rem; border-bottom: 1px solid var(--border); }
-  .rec-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
-  .rec-nome { flex: 1; font-size: 13px; min-width: 100px; }
-  .rec-nums { font-size: 12px; color: var(--text2); font-family: 'DM Mono', monospace; }
-  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
-  .b-manter { background: var(--green-bg); color: var(--green); border: 1px solid rgba(46,204,113,0.2); }
-  .b-alocar { background: var(--red-bg); color: var(--red); border: 1px solid rgba(231,76,60,0.2); }
-  .b-retirar{ background: var(--amber-bg); color: var(--amber); border: 1px solid rgba(243,156,18,0.2); }
-  .resumo-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: .75rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border); }
-  .resumo-item { background: var(--bg3); border-radius: var(--radius-sm); padding: .75rem 1rem; text-align: center; }
-  .resumo-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
-  .resumo-val { font-size: 20px; font-weight: 600; font-family: 'DM Mono', monospace; }
-  .legend { display: flex; gap: 1rem; flex-wrap: wrap; margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--border); }
-  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text3); }
-  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
-  .c1 { background: #f5c842; } .c2 { background: #3498db; } .c3 { background: #2ecc71; } .c4 { background: #9b59b6; } .c5 { background: #e74c3c; }
-  .c6 { background: #1abc9c; } .c7 { background: #e67e22; } .c8 { background: #95a5a6; }
-  .loading-overlay { display: none; position: fixed; inset: 0; background: rgba(14,17,23,0.85); z-index: 200; align-items: center; justify-content: center; flex-direction: column; gap: 1rem; }
-  .loading-overlay.show { display: flex; }
-  .loading-spinner { width: 40px; height: 40px; border: 3px solid var(--border2); border-top-color: var(--gold); border-radius: 50%; animation: spin .8s linear infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .footer { text-align: center; font-size: 11px; color: var(--text3); padding: 2rem; border-top: 1px solid var(--border); margin-top: 2rem; }
+:root{--bg:#0e1117;--bg2:#161b25;--bg3:#1c2333;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);--gold:#f5c842;--gold2:#e0a800;--text:#e8eaf0;--text2:#8b93a7;--text3:#555e72;--green:#2ecc71;--green-bg:rgba(46,204,113,0.12);--red:#e74c3c;--red-bg:rgba(231,76,60,0.12);--amber:#f39c12;--amber-bg:rgba(243,156,18,0.12);--blue:#3498db;--blue-bg:rgba(52,152,219,0.12)}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+.header{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 2rem;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.header-logo{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:600}
+.dot{width:28px;height:28px;background:var(--gold);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#000}
+.header-date{font-size:12px;color:var(--text3);font-family:'DM Mono',monospace}
+.main{max-width:1200px;margin:0 auto;padding:2rem}
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem}
+.card-title{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--border)}
+.upload-row{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+.file-label{display:flex;align-items:center;gap:8px;background:var(--bg3);border:1.5px dashed var(--border2);border-radius:8px;padding:9px 14px;cursor:pointer;font-size:13px;color:var(--text2);flex:1;min-width:180px;transition:border-color .2s,color .2s}
+.file-label:hover{border-color:var(--gold);color:var(--gold)}
+#filePdf{display:none}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;border:none;transition:all .15s;white-space:nowrap}
+.btn-gold{background:var(--gold);color:#000}
+.btn-gold:hover{background:var(--gold2);transform:translateY(-1px)}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.btn-ghost:hover{border-color:var(--red);color:var(--red);background:var(--red-bg)}
+.btn-full{background:var(--gold);color:#000;font-size:14px;font-weight:600;width:100%;padding:12px;justify-content:center;margin-top:1rem;border-radius:10px}
+.btn-full:hover{background:var(--gold2);transform:translateY(-1px)}
+.status{display:none;align-items:center;gap:8px;padding:9px 13px;border-radius:8px;font-size:13px;margin-top:.75rem}
+.status.show{display:flex}
+.status-ok{background:var(--green-bg);color:var(--green);border:1px solid rgba(46,204,113,.25)}
+.status-err{background:var(--red-bg);color:var(--red);border:1px solid rgba(231,76,60,.25)}
+.status-info{background:var(--blue-bg);color:var(--blue);border:1px solid rgba(52,152,219,.25)}
+.patrim-tag{display:none;align-items:center;gap:6px;margin-top:.6rem;background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.25);border-radius:20px;padding:4px 12px;font-size:12px;font-weight:500;color:var(--gold);width:fit-content}
+.patrim-tag.show{display:flex}
+.perfis-row{display:flex;gap:8px;margin-bottom:1.5rem}
+.perfil-btn{flex:1;padding:10px;border-radius:10px;font-size:13px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;text-align:center;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);transition:all .15s}
+.perfil-btn:hover{border-color:var(--gold);color:var(--gold)}
+.perfil-btn.ativo{background:var(--gold);border-color:var(--gold);color:#000;font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+@media(max-width:700px){.grid2{grid-template-columns:1fr}}
+.classe-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.classe-row:last-of-type{border-bottom:none}
+.dot8{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.c0{background:#f5c842}.c1{background:#3498db}.c2{background:#2ecc71}.c3{background:#9b59b6}.c4{background:#e74c3c}
+.classe-nome{flex:1;font-size:13px}
+.classe-input{width:72px;padding:6px 10px;text-align:right;background:var(--bg3);border:1px solid var(--border2);border-radius:7px;color:var(--text);font-size:13px;font-family:'DM Mono',monospace}
+.classe-input:focus{outline:none;border-color:var(--gold)}
+.pct-label{font-size:12px;color:var(--text3);width:14px}
+.total-bar{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;font-size:13px;font-weight:500;margin-top:.75rem}
+.total-ok{background:var(--green-bg);color:var(--green);border:1px solid rgba(46,204,113,.2)}
+.total-err{background:var(--red-bg);color:var(--red);border:1px solid rgba(231,76,60,.2)}
+.alvo-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+.alvo-row:last-of-type{border-bottom:none}
+.alvo-nome{flex:1;font-size:13px}
+.alvo-bar-wrap{width:60px;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden}
+.alvo-bar-fill{height:100%;background:var(--gold);border-radius:2px;transition:width .4s}
+.alvo-pct{font-size:13px;font-weight:600;font-family:'DM Mono',monospace;color:var(--gold);min-width:36px;text-align:right}
+.rec-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.rec-row:last-of-type{border-bottom:none}
+.rec-nome{flex:1;font-size:13px;min-width:100px}
+.rec-nums{font-size:12px;color:var(--text2);font-family:'DM Mono',monospace}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.b-manter{background:var(--green-bg);color:var(--green);border:1px solid rgba(46,204,113,.2)}
+.b-alocar{background:var(--red-bg);color:var(--red);border:1px solid rgba(231,76,60,.2)}
+.b-retirar{background:var(--amber-bg);color:var(--amber);border:1px solid rgba(243,156,18,.2)}
+.resumo-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)}
+@media(max-width:500px){.resumo-grid{grid-template-columns:repeat(2,1fr)}}
+.resumo-item{background:var(--bg3);border-radius:8px;padding:.75rem;text-align:center}
+.resumo-label{font-size:11px;color:var(--text3);margin-bottom:4px}
+.resumo-val{font-size:22px;font-weight:600;font-family:'DM Mono',monospace}
+.legenda{display:flex;gap:1rem;flex-wrap:wrap;margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border)}
+.legenda-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text3)}
+.debug-box{display:none;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:.75rem;font-size:11px;font-family:'DM Mono',monospace;color:var(--text3);max-height:180px;overflow-y:auto;margin-top:.75rem;white-space:pre-wrap;line-height:1.7}
+.debug-box.show{display:block}
+.overlay{display:none;position:fixed;inset:0;background:rgba(14,17,23,.88);z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:1rem}
+.overlay.show{display:flex}
+.spin{width:40px;height:40px;border:3px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:rot .8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+.spin-text{font-size:14px;color:var(--text2)}
+.fade-in{animation:fi .3s ease}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.footer{text-align:center;font-size:11px;color:var(--text3);padding:2rem;border-top:1px solid var(--border);margin-top:1rem}
 </style>
 </head>
 <body>
 
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="loading-spinner"></div>
-  <div class="loading-text">Processando PDF...</div>
+<div class="overlay" id="overlay">
+  <div class="spin"></div>
+  <div class="spin-text">Processando PDF...</div>
 </div>
 
 <header class="header">
-  <div class="header-logo">
-    <div class="dot">XP</div>
-    Rebalanceador de Carteira
-  </div>
-  <div class="header-date" id="headerDate"></div>
+  <div class="header-logo"><div class="dot">XP</div>Rebalanceador de Carteira</div>
+  <div class="header-date" id="hDate"></div>
 </header>
 
 <main class="main">
-
-  <div class="upload-card">
-    <div class="upload-title">Importar relatório XP</div>
+  <div class="card">
+    <div class="card-title">Importar relatório XP (PDF)</div>
     <div class="upload-row">
       <label class="file-label" for="filePdf">
-        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-          <path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-        </svg>
-        <span id="fileNameDisplay">Selecionar arquivo PDF...</span>
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        <span id="fileName">Selecionar arquivo PDF...</span>
       </label>
       <input type="file" id="filePdf" accept=".pdf">
-      <button class="btn btn-gold" id="btnImportar">Importar PDF</button>
-      <button class="btn btn-ghost" id="btnLimpar">Limpar</button>
-    </div>
-    <div id="statusMsg" class="status-bar"></div>
-    <div id="patrimonioTag" style="display:none" class="patrimonio-tag">
-      <span>💰</span>
-      <span id="patrimonioVal"></span>
-    </div>
-  </div>
-
-  <div class="perfis-section">
-    <div class="section-label">Perfil do investidor</div>
-    <div class="perfis-row" id="perfisRow"></div>
-  </div>
-
-  <div class="grid2">
-    <div class="panel">
-      <div class="panel-title">Alocação atual</div>
-      <div id="inputsAtual"></div>
-      <div id="totalBar" class="total-bar total-err">
-        <span>Total</span>
-        <span id="totalVal">0,00%</span>
-      </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel-title">Carteira recomendada · <span id="perfilLabel" style="color:var(--gold)">Moderado</span></div>
-      <div id="tabelaAlvo"></div>
-      <button class="btn btn-analyze" id="btnAnalisar">
-        Analisar rebalanceamento
+      <button class="btn btn-gold" id="btnImportar">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        Importar PDF
+      </button>
+      <button class="btn btn-ghost" id="btnLimpar">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        Limpar
       </button>
     </div>
+    <div id="status" class="status"></div>
+    <div id="patrimTag" class="patrim-tag">
+      <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      <span id="patrimVal"></span>
+    </div>
+    <div id="debugBox" class="debug-box"></div>
   </div>
 
-  <div id="resultadoArea" style="display:none" class="resultado-card">
-    <div class="resultado-title">Recomendações de rebalanceamento</div>
+  <div class="perfis-row" id="perfisRow"></div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">Alocação atual</div>
+      <div id="inputsAtual"></div>
+      <div id="totalBar" class="total-bar total-err">
+        <span>Total</span><span id="totalVal">0,00%</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Carteira recomendada · <span id="perfilLabel" style="color:var(--gold)">Moderado</span></div>
+      <div id="tabelaAlvo"></div>
+      <button class="btn btn-full" id="btnAnalisar">Analisar rebalanceamento</button>
+    </div>
+  </div>
+
+  <div id="resultArea" class="card fade-in" style="display:none">
+    <div class="card-title">Recomendações de rebalanceamento</div>
     <div id="listaRec"></div>
     <div class="resumo-grid" id="resumoGrid"></div>
-    <div class="legend">
-      <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Manter (dentro da tolerância)</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Alocar mais recursos</div>
-      <div class="legend-item"><div class="legend-dot" style="background:var(--amber)"></div> Retirar / reduzir posição</div>
+    <div class="legenda">
+      <div class="legenda-item"><div class="dot8" style="background:var(--green)"></div>Manter (dentro da tolerância)</div>
+      <div class="legenda-item"><div class="dot8" style="background:var(--red)"></div>Alocar mais recursos</div>
+      <div class="legenda-item"><div class="dot8" style="background:var(--amber)"></div>Retirar / reduzir posição</div>
     </div>
   </div>
-
 </main>
 
-<footer class="footer">
-  Este material tem caráter exclusivamente informativo e não constitui recomendação de investimento.
-</footer>
+<footer class="footer">Material de caráter exclusivamente informativo — não constitui recomendação de investimento.</footer>
 
 <script>
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// CARTEIRAS RECOMENDADAS CORRETAS
-const PERFIS = {
-  Conservador: {
-    "Renda Fixa Pós": 85, "Renda Fixa Pré": 15, "Renda Fixa Inflação": 0,
-    "Multiestratégia": 0, "Renda Variável": 0, "Renda Fixa Global": 0,
-    "Renda Variável Global": 0, "Alternativo": 0
-  },
-  Moderado: {
-    "Renda Fixa Pós": 54, "Renda Fixa Pré": 13, "Renda Fixa Inflação": 20,
-    "Multiestratégia": 5, "Renda Variável": 4, "Renda Fixa Global": 0,
-    "Renda Variável Global": 4, "Alternativo": 0
-  },
-  Agressivo: {
-    "Renda Fixa Pós": 44, "Renda Fixa Pré": 15, "Renda Fixa Inflação": 24,
-    "Multiestratégia": 5, "Renda Variável": 6, "Renda Fixa Global": 0,
-    "Renda Variável Global": 6, "Alternativo": 0
-  }
+const PERFIS={
+  Conservador:{"Pós Fixado":85,"Pré Fixado":15,"Inflação":0,"Multimercado":0,"Renda Variável":0},
+  Moderado:   {"Pós Fixado":54,"Pré Fixado":13,"Inflação":20,"Multimercado":5,"Renda Variável":4},
+  Agressivo:  {"Pós Fixado":44,"Pré Fixado":15,"Inflação":24,"Multimercado":5,"Renda Variável":6}
 };
+const CLASSES=["Pós Fixado","Pré Fixado","Inflação","Multimercado","Renda Variável"];
+const CORES=["c0","c1","c2","c3","c4"];
+let perfilAtivo="Moderado", inputsMap={};
 
-const CLASSES = [
-  "Renda Fixa Pós", "Renda Fixa Pré", "Renda Fixa Inflação",
-  "Multiestratégia", "Renda Variável", "Renda Fixa Global",
-  "Renda Variável Global", "Alternativo"
-];
-
-const CORES = ["c1", "c2", "c3", "c4", "c5", "c6", "c7", "c8"];
-
-let perfilAtivo = "Moderado";
-let inputsMap = {};
-
-function numBR(s) {
-  if (!s) return 0;
-  if (typeof s === 'number') return s;
-  let limpo = s.toString().replace(/\./g, '').replace(',', '.');
-  let num = parseFloat(limpo);
-  return isNaN(num) ? 0 : num;
-}
-
-function fmtPct(v) {
-  return v.toFixed(2).replace('.', ',') + '%';
-}
-
-function showStatus(msg, tipo) {
-  const el = document.getElementById('statusMsg');
-  el.innerHTML = msg;
-  el.className = `status-bar show status-${tipo}`;
-  setTimeout(() => {
-    if (el.className.includes('show')) el.classList.remove('show');
-  }, 5000);
-}
-
+// ── EXTRAÇÃO PDF ──────────────────────────────────────────────────────────────
+// Lógica validada contra o PDF real da XP.
+//
+// O pdf.js divide cada glifo tipográfico em item.str separado. Padrão observado:
+//   Nome   → token ÚNICO: 'Pós Fixado', 'Pré Fixado', 'Inflação' (pode ter ligatura ﬂ),
+//             'Multimercado', 'Renda Variável Brasil', 'Alternativo'
+//   (XX,XX%) → 5 tokens: '(' | dígitos | ',' | dígitos | '%)'
+//   R$ valor → tokens: 'R' | '$' | dígitos | '.' | dígitos | ... | ',' | 2 dígitos
+// ─────────────────────────────────────────────────────────────────────────────
 async function extrairDadosPDF(file) {
   const ab = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
-  
-  let textoCompleto = '';
-  
+  const pdf = await pdfjsLib.getDocument({data:ab}).promise;
+
+  // Coletar todos item.str de todas as páginas
+  let raw = [];
   for (let p = 1; p <= pdf.numPages; p++) {
-    const page = await pdf.getPage(p);
-    const tc = await page.getTextContent();
-    const pageText = tc.items.map(item => item.str).join(' ');
-    textoCompleto += pageText + ' ';
+    const tc = await (await pdf.getPage(p)).getTextContent();
+    tc.items.forEach(it => raw.push(it.str));
   }
-  
-  // Buscar Patrimônio
-  let patrimonioTotal = 0;
-  const patMatch = textoCompleto.match(/PATRIM[OÔ]NIO\s*TOTAL\s*BRUTO[:\s]*R\$\s*([\d\.]+,\d{2})/i);
-  if (patMatch) {
-    patrimonioTotal = numBR(patMatch[1]);
+
+  // Normalizar ligaturas tipográficas (ﬂ→fl, ﬁ→fi etc.) e non-breaking space
+  function norm(s) {
+    return s.replace(/\uFB00/g,'ff').replace(/\uFB01/g,'fi').replace(/\uFB02/g,'fl')
+            .replace(/\uFB03/g,'ffi').replace(/\uFB04/g,'ffl').replace(/\u00A0/g,' ').trim();
   }
-  
-  // ========== EXTRAÇÃO CORRIGIDA ==========
-  // O formato real do texto: "Pós Fixado (42,61%) R$ 1.242.086,14"
-  
-  let resultados = {
-    "Renda Fixa Pós": 0,
-    "Renda Fixa Pré": 0,
-    "Renda Fixa Inflação": 0,
-    "Multiestratégia": 0,
-    "Renda Variável": 0,
-    "Renda Fixa Global": 0,
-    "Renda Variável Global": 0,
-    "Alternativo": 0
-  };
-  
-  // Busca por "Pós Fixado (42,61%)"
-  const posMatch = textoCompleto.match(/P[óo]s\s+Fixado\s*\((\d{1,3},\d{2})%/i);
-  if (posMatch) resultados["Renda Fixa Pós"] = parseFloat(posMatch[1].replace(',', '.'));
-  
-  // Busca por "Pré Fixado (23,38%)"
-  const preMatch = textoCompleto.match(/Pr[ée]\s+Fixado\s*\((\d{1,3},\d{2})%/i);
-  if (preMatch) resultados["Renda Fixa Pré"] = parseFloat(preMatch[1].replace(',', '.'));
-  
-  // Busca por "Inflação (20,90%)"
-  const infMatch = textoCompleto.match(/Inflação\s*\((\d{1,3},\d{2})%/i);
-  if (infMatch) resultados["Renda Fixa Inflação"] = parseFloat(infMatch[1].replace(',', '.'));
-  
-  // Busca por "Multimercado (4,81%)"
-  const multiMatch = textoCompleto.match(/Multimercado\s*\((\d{1,3},\d{2})%/i);
-  if (multiMatch) resultados["Multiestratégia"] = parseFloat(multiMatch[1].replace(',', '.'));
-  
-  // Busca por "Renda Variável Brasil (6,94%)"
-  const rvMatch = textoCompleto.match(/Renda\s+Vari[áa]vel\s+Brasil\s*\((\d{1,3},\d{2})%/i);
-  if (rvMatch) resultados["Renda Variável"] = parseFloat(rvMatch[1].replace(',', '.'));
-  
-  // Busca por "Alternativo (1,36%)" e soma à Renda Variável
-  const altMatch = textoCompleto.match(/Alternativo\s*\((\d{1,3},\d{2})%/i);
-  if (altMatch) {
-    const altPct = parseFloat(altMatch[1].replace(',', '.'));
-    resultados["Renda Variável"] += altPct;
+  const T = raw.map(norm).filter(s => s.length > 0);
+  dbg('Tokens: '+T.length);
+
+  // lerPct(i): lê percentual fracionado em 5 tokens a partir de '('
+  // '(' | 'XX' | ',' | 'YY' | '%)' → XX.YY
+  function lerPct(i) {
+    if (T[i]!=='(') return null;
+    const a=T[i+1]||'', sep=T[i+2]||'', b=T[i+3]||'', fim=T[i+4]||'';
+    if (sep===','&&fim.endsWith('%)')&&/^\d+$/.test(a)&&/^\d+$/.test(b))
+      return parseFloat(a+'.'+b);
+    return null;
   }
-  
-  return { resultados, patrimonioTotal };
+
+  // lerValor(i): lê valor monetário a partir de 'R' (pula 'R' e '$')
+  // Para quando encontrar vírgula seguida de exatamente 2 dígitos (parte decimal)
+  function lerValor(i) {
+    if (T[i]!=='R') return null;
+    let s='', j=i+2; // pula 'R' e '$'
+    while (j<T.length && j<i+25) {
+      const tk=T[j];
+      if (/^\d+$/.test(tk)) { s+=tk; j++; }
+      else if (tk==='.') { s+='.'; j++; }
+      else if (tk===',') {
+        const nxt=T[j+1]||'';
+        if (/^\d{2}$/.test(nxt)) { s+=','+nxt; j+=2; break; }
+        else break;
+      } else break;
+    }
+    if (!s||!s.includes(',')) return null;
+    return parseFloat(s.replace(/\./g,'').replace(',','.'));
+  }
+
+  const NOMES=[
+    {re:/^P[oó]s Fixado$/i,           key:"Pós Fixado"},
+    {re:/^Pr[eé] Fixado$/i,           key:"Pré Fixado"},
+    {re:/^Infla[cç][aã]o$/i,          key:"Inflação"},
+    {re:/^Multimercado$/i,            key:"Multimercado"},
+    {re:/^Renda Vari[aá]vel Brasil$/i,key:"Renda Variável"},
+    {re:/^Alternativo$/i,             key:"Alternativo"}
+  ];
+
+  const res={};
+
+  for (let i=0;i<T.length;i++) {
+    for (const {re,key} of NOMES) {
+      if (key in res) continue;
+      if (!re.test(T[i])) continue;
+      // Buscar '(' do percentual nos próximos 3 tokens
+      let pi=-1;
+      for (let k=i+1;k<=i+3&&k<T.length;k++) { if(T[k]==='('){pi=k;break;} }
+      if (pi===-1) continue;
+      const pct=lerPct(pi);
+      if (pct===null) continue;
+      // Buscar 'R' do valor após o '%)' (posição pi+4)
+      let ri=-1;
+      for (let k=pi+5;k<=pi+9&&k<T.length;k++) { if(T[k]==='R'){ri=k;break;} }
+      const val=ri!==-1?lerValor(ri):null;
+      res[key]={pct,val};
+      dbg('[OK] '+key+': '+pct+'% | R$'+val);
+      break;
+    }
+  }
+
+  // Alternativo → soma em Multimercado
+  if (res["Alternativo"]) {
+    if (!res["Multimercado"]) res["Multimercado"]={pct:0,val:0};
+    res["Multimercado"].val=(res["Multimercado"].val||0)+(res["Alternativo"].val||0);
+    res["Multimercado"].pct=null;
+    dbg('[Alt->Multi]');
+    delete res["Alternativo"];
+  }
+
+  // Recalcular % do Multimercado se foi zerado
+  const totVal=CLASSES.reduce((s,c)=>s+(res[c]?.val||0),0);
+  if (totVal>0) {
+    for (const c of CLASSES) {
+      if (res[c]&&res[c].val&&!res[c].pct) {
+        res[c].pct=(res[c].val/totVal)*100;
+        dbg('[Recalc] '+c+': '+res[c].pct.toFixed(2)+'%');
+      }
+    }
+  }
+
+  // Patrimônio total
+  let patrimonio=totVal;
+  for (let i=0;i<T.length-3;i++) {
+    if (/PATRIM/i.test(T[i])&&/TOTAL/i.test(T[i+1])&&/BRUTO/i.test(T[i+2])) {
+      for (let k=i+3;k<Math.min(i+10,T.length);k++) {
+        if (T[k]==='R'){const v=lerValor(k);if(v){patrimonio=v;dbg('[Patr] R$'+v);break;}}
+      }
+      break;
+    }
+  }
+
+  return {res, patrimonio};
 }
 
-function renderInputs() {
-  const container = document.getElementById('inputsAtual');
-  container.innerHTML = '';
-  CLASSES.forEach((classe, idx) => {
-    const row = document.createElement('div');
-    row.className = 'classe-row';
-    row.innerHTML = `
-      <div class="classe-dot ${CORES[idx]}"></div>
-      <span class="classe-nome">${classe}</span>
-      <input class="classe-input" type="number" step="any" min="0" max="100" value="0" id="inp_${idx}">
-      <span class="classe-pct">%</span>
-    `;
-    container.appendChild(row);
-    inputsMap[classe] = row.querySelector('input');
-    inputsMap[classe].addEventListener('input', atualizarTotal);
+// ── UI HELPERS ────────────────────────────────────────────────
+function fmtPct(v){return v.toFixed(2).replace('.',',')+' %'}
+function fmtBRL(v){return 'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2})}
+function setStatus(msg,tipo){const el=document.getElementById('status');el.innerHTML=msg;el.className='status show status-'+tipo}
+function dbg(txt){const el=document.getElementById('debugBox');el.classList.add('show');el.textContent+=txt+'\n'}
+function atualizarTotal(){
+  let t=0;
+  CLASSES.forEach(c=>{t+=parseFloat(inputsMap[c]?.value||0)||0});
+  document.getElementById('totalVal').textContent=fmtPct(t);
+  document.getElementById('totalBar').className='total-bar '+(Math.abs(t-100)<0.1?'total-ok':'total-err');
+}
+
+// ── RENDER ────────────────────────────────────────────────────
+function renderInputs(){
+  const c=document.getElementById('inputsAtual'); c.innerHTML='';
+  CLASSES.forEach((cl,idx)=>{
+    const row=document.createElement('div'); row.className='classe-row';
+    row.innerHTML=`<div class="dot8 ${CORES[idx]}"></div><span class="classe-nome">${cl}</span><input class="classe-input" type="number" step="any" min="0" max="100" value="0"><span class="pct-label">%</span>`;
+    c.appendChild(row);
+    inputsMap[cl]=row.querySelector('input');
+    inputsMap[cl].addEventListener('input',atualizarTotal);
   });
   atualizarTotal();
 }
 
-function atualizarTotal() {
-  let total = 0;
-  CLASSES.forEach(c => { total += parseFloat(inputsMap[c]?.value || 0); });
-  document.getElementById('totalVal').textContent = fmtPct(total);
-  const bar = document.getElementById('totalBar');
-  bar.className = Math.abs(total - 100) < 0.1 ? 'total-bar total-ok' : 'total-bar total-err';
+function renderAlvo(){
+  const rec=PERFIS[perfilAtivo];
+  document.getElementById('perfilLabel').textContent=perfilAtivo;
+  document.getElementById('tabelaAlvo').innerHTML=CLASSES.map((c,i)=>`
+    <div class="alvo-row"><div class="dot8 ${CORES[i]}"></div><span class="alvo-nome">${c}</span>
+    <div class="alvo-bar-wrap"><div class="alvo-bar-fill" style="width:${rec[c]}%"></div></div>
+    <span class="alvo-pct">${rec[c]}%</span></div>`).join('');
 }
 
-function renderAlvo() {
-  const rec = PERFIS[perfilAtivo];
-  document.getElementById('perfilLabel').textContent = perfilAtivo;
-  const container = document.getElementById('tabelaAlvo');
-  container.innerHTML = CLASSES.map((c, idx) => `
-    <div class="alvo-row">
-      <div class="classe-dot ${CORES[idx]}"></div>
-      <span class="alvo-nome">${c}</span>
-      <div class="alvo-bar-wrap"><div class="alvo-bar-fill" style="width:${rec[c]}%"></div></div>
-      <span class="alvo-pct">${rec[c]}%</span>
-    </div>
-  `).join('');
+function renderPerfis(){
+  const icons={Conservador:'🛡',Moderado:'⚖',Agressivo:'🚀'};
+  document.getElementById('perfisRow').innerHTML=Object.keys(PERFIS).map(p=>`
+    <button class="perfil-btn ${p===perfilAtivo?'ativo':''}" data-p="${p}">${icons[p]} ${p}</button>`).join('');
+  document.querySelectorAll('.perfil-btn').forEach(b=>b.addEventListener('click',()=>{
+    perfilAtivo=b.dataset.p; renderPerfis(); renderAlvo();
+    document.getElementById('resultArea').style.display='none';
+  }));
 }
 
-function renderPerfis() {
-  const container = document.getElementById('perfisRow');
-  container.innerHTML = Object.keys(PERFIS).map(p => `
-    <button class="perfil-btn ${p === perfilAtivo ? 'ativo' : ''}" data-perfil="${p}">
-      ${p === 'Conservador' ? '🛡️' : p === 'Moderado' ? '⚖️' : '🚀'} ${p}
-    </button>
-  `).join('');
-  container.querySelectorAll('.perfil-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      perfilAtivo = btn.dataset.perfil;
-      renderPerfis();
-      renderAlvo();
-      document.getElementById('resultadoArea').style.display = 'none';
-    });
-  });
-}
-
-function analisar() {
-  let total = 0;
-  const atual = {};
-  CLASSES.forEach(c => { 
-    atual[c] = parseFloat(inputsMap[c]?.value || 0);
-    total += atual[c];
-  });
-  
-  if (Math.abs(total - 100) > 0.5) {
-    showStatus(`Total deve ser 100% (atual: ${fmtPct(total)})`, 'err');
-    return;
-  }
-  
-  const alvo = PERFIS[perfilAtivo];
-  let nManter = 0, nAlocar = 0, nRetirar = 0;
-  
-  const html = CLASSES.map((c, idx) => {
-    const diff = alvo[c] - atual[c];
-    let badgeClass, label;
-    if (Math.abs(diff) < 0.1) {
-      badgeClass = 'b-manter';
-      label = '✓ Manter';
-      nManter++;
-    } else if (diff > 0) {
-      badgeClass = 'b-alocar';
-      label = `↑ Alocar +${fmtPct(diff)}`;
-      nAlocar++;
-    } else {
-      badgeClass = 'b-retirar';
-      label = `↓ Retirar ${fmtPct(Math.abs(diff))}`;
-      nRetirar++;
-    }
-    return `
-      <div class="rec-row">
-        <div class="classe-dot ${CORES[idx]}"></div>
-        <span class="rec-nome">${c}</span>
-        <span class="rec-nums">Atual ${fmtPct(atual[c])} → Alvo ${alvo[c]}%</span>
-        <span class="badge ${badgeClass}">${label}</span>
-      </div>
-    `;
+function analisar(){
+  let total=0; const atual={};
+  CLASSES.forEach(c=>{atual[c]=parseFloat(inputsMap[c]?.value||0)||0; total+=atual[c]});
+  if (Math.abs(total-100)>0.1){setStatus('O total deve ser 100% (atual: '+fmtPct(total)+')', 'err');return}
+  const alvo=PERFIS[perfilAtivo]; let nM=0,nA=0,nR=0;
+  document.getElementById('listaRec').innerHTML=CLASSES.map((c,i)=>{
+    const diff=alvo[c]-atual[c]; let bc,label;
+    if (Math.abs(diff)<0.05){bc='b-manter';label='✓ Manter';nM++}
+    else if (diff>0){bc='b-alocar';label='↑ Alocar +'+fmtPct(diff);nA++}
+    else{bc='b-retirar';label='↓ Retirar '+fmtPct(Math.abs(diff));nR++}
+    return `<div class="rec-row"><div class="dot8 ${CORES[i]}"></div><span class="rec-nome">${c}</span><span class="rec-nums">${fmtPct(atual[c])} → ${alvo[c]}%</span><span class="badge ${bc}">${label}</span></div>`;
   }).join('');
-  
-  document.getElementById('listaRec').innerHTML = html;
-  document.getElementById('resumoGrid').innerHTML = `
-    <div class="resumo-item"><div class="resumo-label">Manter</div><div class="resumo-val" style="color:var(--green)">${nManter}</div></div>
-    <div class="resumo-item"><div class="resumo-label">Alocar</div><div class="resumo-val" style="color:var(--red)">${nAlocar}</div></div>
-    <div class="resumo-item"><div class="resumo-label">Retirar</div><div class="resumo-val" style="color:var(--amber)">${nRetirar}</div></div>
-    <div class="resumo-item"><div class="resumo-label">Perfil</div><div class="resumo-val" style="color:var(--gold);font-size:14px">${perfilAtivo}</div></div>
-  `;
-  
-  const area = document.getElementById('resultadoArea');
-  area.style.display = 'block';
-  area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  document.getElementById('resumoGrid').innerHTML=`
+    <div class="resumo-item"><div class="resumo-label">Manter</div><div class="resumo-val" style="color:var(--green)">${nM}</div></div>
+    <div class="resumo-item"><div class="resumo-label">Alocar</div><div class="resumo-val" style="color:var(--red)">${nA}</div></div>
+    <div class="resumo-item"><div class="resumo-label">Retirar</div><div class="resumo-val" style="color:var(--amber)">${nR}</div></div>
+    <div class="resumo-item"><div class="resumo-label">Perfil</div><div class="resumo-val" style="color:var(--gold);font-size:14px">${perfilAtivo}</div></div>`;
+  const area=document.getElementById('resultArea');
+  area.style.display='block'; area.classList.remove('fade-in'); void area.offsetWidth; area.classList.add('fade-in');
+  area.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-// EVENTOS
-document.getElementById('filePdf').addEventListener('change', function(e) {
-  const f = e.target.files[0];
-  document.getElementById('fileNameDisplay').textContent = f ? f.name : 'Selecionar arquivo PDF...';
+// ── EVENTOS ───────────────────────────────────────────────────
+document.getElementById('filePdf').addEventListener('change',function(){
+  document.getElementById('fileName').textContent=this.files[0]?.name||'Selecionar arquivo PDF...';
 });
 
-document.getElementById('btnImportar').addEventListener('click', async () => {
-  const file = document.getElementById('filePdf').files[0];
-  if (!file) {
-    showStatus('Selecione um arquivo PDF primeiro.', 'err');
-    return;
-  }
-  
-  document.getElementById('loadingOverlay').classList.add('show');
-  document.getElementById('statusMsg').classList.remove('show');
-  
+document.getElementById('btnImportar').addEventListener('click', async()=>{
+  const file=document.getElementById('filePdf').files[0];
+  if (!file){setStatus('Selecione um arquivo PDF primeiro.','err');return}
+  const dbgEl=document.getElementById('debugBox'); dbgEl.textContent=''; dbgEl.classList.remove('show');
+  document.getElementById('patrimTag').classList.remove('show');
+  document.getElementById('overlay').classList.add('show');
   try {
-    const { resultados, patrimonioTotal } = await extrairDadosPDF(file);
-    
-    let encontrou = false;
-    for (const classe of CLASSES) {
-      if (resultados[classe] > 0) {
-        inputsMap[classe].value = resultados[classe].toFixed(2);
-        encontrou = true;
-      }
-    }
-    atualizarTotal();
-    
-    if (encontrou) {
-      showStatus('✅ PDF importado com sucesso!', 'ok');
-      if (patrimonioTotal > 0) {
-        document.getElementById('patrimonioVal').innerHTML = `Patrimônio: R$ ${patrimonioTotal.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
-        document.getElementById('patrimonioTag').style.display = 'inline-flex';
-      }
+    const {res, patrimonio} = await extrairDadosPDF(file);
+    const encontrados=CLASSES.filter(c=>res[c]?.pct!=null).length;
+    if (encontrados===0) {
+      setStatus('Não foi possível extrair os dados. Verifique o PDF.','err');
     } else {
-      showStatus('❌ Não foi possível extrair os percentuais. Verifique o formato do PDF.', 'err');
+      CLASSES.forEach(c=>{if(inputsMap[c]&&res[c]?.pct!=null) inputsMap[c].value=res[c].pct.toFixed(2)});
+      atualizarTotal();
+      setStatus('PDF importado com sucesso! '+encontrados+' classes encontradas.','ok');
+      if (patrimonio>0){
+        document.getElementById('patrimVal').textContent='Patrimônio: '+fmtBRL(patrimonio);
+        document.getElementById('patrimTag').classList.add('show');
+      }
     }
-  } catch (err) {
-    showStatus('Erro ao processar PDF: ' + err.message, 'err');
+  } catch(e) {
+    setStatus('Erro: '+e.message,'err'); dbg('ERRO: '+e.message);
   } finally {
-    document.getElementById('loadingOverlay').classList.remove('show');
+    document.getElementById('overlay').classList.remove('show');
   }
 });
 
-document.getElementById('btnLimpar').addEventListener('click', () => {
-  CLASSES.forEach(c => { if (inputsMap[c]) inputsMap[c].value = '0'; });
+document.getElementById('btnLimpar').addEventListener('click',()=>{
+  CLASSES.forEach(c=>{if(inputsMap[c])inputsMap[c].value='0'});
   atualizarTotal();
-  document.getElementById('resultadoArea').style.display = 'none';
-  document.getElementById('statusMsg').classList.remove('show');
-  document.getElementById('patrimonioTag').style.display = 'none';
-  document.getElementById('filePdf').value = '';
-  document.getElementById('fileNameDisplay').textContent = 'Selecionar arquivo PDF...';
+  document.getElementById('resultArea').style.display='none';
+  document.getElementById('status').classList.remove('show');
+  document.getElementById('patrimTag').classList.remove('show');
+  document.getElementById('debugBox').textContent='';
+  document.getElementById('debugBox').classList.remove('show');
+  document.getElementById('filePdf').value='';
+  document.getElementById('fileName').textContent='Selecionar arquivo PDF...';
 });
 
-document.getElementById('btnAnalisar').addEventListener('click', analisar);
+document.getElementById('btnAnalisar').addEventListener('click',analisar);
 
-function init() {
-  const now = new Date();
-  document.getElementById('headerDate').textContent = now.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-  renderInputs();
-  renderPerfis();
-  renderAlvo();
-}
-
-init();
+// ── INIT ──────────────────────────────────────────────────────
+(function(){
+  document.getElementById('hDate').textContent=
+    new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  renderInputs(); renderPerfis(); renderAlvo();
+})();
 </script>
 </body>
 </html>
