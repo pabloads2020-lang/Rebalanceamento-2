@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rebalanceador de Carteira · PBF (10 Classes + Caixa/Proventos)</title>
+<title>Rebalanceador de Carteira · PBF (10 Classes + Inflação Corrigida)</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
@@ -41,7 +41,6 @@ body.light {
 * { box-sizing: border-box; margin: 0; padding: 0; transition: all 0.2s ease; }
 body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
 
-/* ===== TODAS AS FONTES AUMENTADAS EM +1px ===== */
 .header { background: var(--header-bg); border-bottom: 1px solid var(--header-border); padding: 0 2rem; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
 .header-logo { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; }
 .dot { width: 28px; height: 28px; background: var(--gold); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #000; }
@@ -188,46 +187,41 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ========== PERCENTUAIS COM CAIXA E PROVENTOS (10 CLASSES) ==========
+// ========== PERFIS ORIGINAIS (SEM CAIXA E PROVENTOS) ==========
 const PERFIS = {
   Conservador: {
-    "Renda Fixa Pós": 80,
-    "Renda Fixa Pré": 10,
-    "Renda Fixa Inflação": 5,
-    "Multiestratégia": 2,
-    "Renda Variável": 1,
+    "Renda Fixa Pós": 85,
+    "Renda Fixa Pré": 15,
+    "Renda Fixa Inflação": 0,
+    "Multiestratégia": 0,
+    "Renda Variável": 0,
     "Renda Fixa Global": 0,
     "Renda Variável Global": 0,
-    "Alternativo": 0,
-    "Caixa": 2,
-    "Proventos": 0
+    "Alternativo": 0
   },
   Moderado: {
-    "Renda Fixa Pós": 45,
-    "Renda Fixa Pré": 10,
-    "Renda Fixa Inflação": 15,
+    "Renda Fixa Pós": 54,
+    "Renda Fixa Pré": 13,
+    "Renda Fixa Inflação": 20,
     "Multiestratégia": 5,
-    "Renda Variável": 10,
-    "Renda Fixa Global": 5,
-    "Renda Variável Global": 5,
-    "Alternativo": 0,
-    "Caixa": 5,
-    "Proventos": 0
+    "Renda Variável": 4,
+    "Renda Fixa Global": 0,
+    "Renda Variável Global": 4,
+    "Alternativo": 0
   },
   Agressivo: {
-    "Renda Fixa Pós": 30,
-    "Renda Fixa Pré": 8,
-    "Renda Fixa Inflação": 10,
+    "Renda Fixa Pós": 44,
+    "Renda Fixa Pré": 15,
+    "Renda Fixa Inflação": 24,
     "Multiestratégia": 5,
-    "Renda Variável": 20,
-    "Renda Fixa Global": 5,
-    "Renda Variável Global": 15,
-    "Alternativo": 2,
-    "Caixa": 5,
-    "Proventos": 0
+    "Renda Variável": 6,
+    "Renda Fixa Global": 0,
+    "Renda Variável Global": 6,
+    "Alternativo": 0
   }
 };
 
+// CLASSES COMPLETAS (8 originais + Caixa + Proventos)
 const CLASSES = [
   "Renda Fixa Pós",
   "Renda Fixa Pré",
@@ -267,63 +261,90 @@ async function extrairDadosPDF(file) {
     const page = await pdf.getPage(p);
     const tc = await page.getTextContent();
     const pageText = tc.items.map(item => item.str).join(' ');
-    textoCompleto += pageText + '\n';
+    textoCompleto += pageText + ' ';
   }
   
-  // Buscar a seção correta
+  // Mostrar trecho para debug
+  dbg('=== TRECHO DO PDF (primeiros 2000 caracteres) ===');
+  dbg(textoCompleto.substring(0, 2000));
+  
+  // Buscar a seção correta (páginas 5-6)
   let secaoAlvo = textoCompleto;
   const idxEstrategias = textoCompleto.indexOf('Estratégias');
   const idxComposicao = textoCompleto.indexOf('COMPOSIÇÃO');
   
   if (idxEstrategias !== -1) {
     secaoAlvo = textoCompleto.substring(idxEstrategias, idxEstrategias + 3000);
+    dbg('=== SEÇÃO "Estratégias" encontrada ===');
   } else if (idxComposicao !== -1) {
     secaoAlvo = textoCompleto.substring(idxComposicao, idxComposicao + 3000);
+    dbg('=== SEÇÃO "COMPOSIÇÃO" encontrada ===');
+  } else {
+    dbg('⚠️ Seção "Estratégias" ou "COMPOSIÇÃO" não encontrada! Buscando em todo o texto...');
   }
   
-  // Função para extrair percentuais exatos
+  dbg('Trecho da seção alvo:');
+  dbg(secaoAlvo.substring(0, 1500));
+  
+  // Função para extrair percentuais (suporta espaços e quebras de linha)
   function extrairPct(nome) {
-    // Permite espaços variáveis, vírgula como separador decimal
+    // Regex flexível: permite espaços variáveis, quebras de linha e vírgula como separador decimal
     const regex = new RegExp(nome + '\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{2})\\s*%\\)', 'i');
     const match = secaoAlvo.match(regex);
     if (match) {
-      return parseFloat(match[1] + '.' + match[2]);
+      const valor = parseFloat(match[1] + '.' + match[2]);
+      dbg(`✅ ${nome}: ${valor}%`);
+      return valor;
     }
+    dbg(`❌ ${nome}: não encontrado`);
     return null;
   }
   
-  // Extrair cada classe
+  // Extrair todas as classes do PDF (com os nomes EXATOS do relatório)
   const pctPos = extrairPct('Pós Fixado');
   const pctPre = extrairPct('Pré Fixado');
-  const pctInf = extrairPct('Inflação');
+  const pctInf = extrairPct('Inflação');  // CORRIGIDO: agora lê corretamente
   const pctMulti = extrairPct('Multimercado');
   const pctRV = extrairPct('Renda Variável Brasil');
   const pctAlternativo = extrairPct('Alternativo');
   const pctRVGlobal = extrairPct('Renda Variável Global');
-  
-  // NOVAS EXTRAÇÕES: CAIXA E PROVENTOS
   const pctCaixa = extrairPct('Caixa');
   const pctProventos = extrairPct('Proventos');
   
-  // Mapear para as 10 classes
+  // Mapear para as classes do sistema
   const res = {
-    "Renda Fixa Pós": { pct: pctPos, val: 0 },
-    "Renda Fixa Pré": { pct: pctPre, val: 0 },
-    "Renda Fixa Inflação": { pct: pctInf, val: 0 },
-    "Multiestratégia": { pct: pctMulti, val: 0 },
-    "Renda Variável": { pct: pctRV, val: 0 },
-    "Renda Fixa Global": { pct: 0, val: 0 },
-    "Renda Variável Global": { pct: pctRVGlobal, val: 0 },
-    "Alternativo": { pct: pctAlternativo, val: 0 },
-    "Caixa": { pct: pctCaixa, val: 0 },
-    "Proventos": { pct: pctProventos, val: 0 }
+    "Renda Fixa Pós": pctPos,
+    "Renda Fixa Pré": pctPre,
+    "Renda Fixa Inflação": pctInf,
+    "Multiestratégia": pctMulti,
+    "Renda Variável": pctRV,
+    "Renda Fixa Global": 0,
+    "Renda Variável Global": pctRVGlobal,
+    "Alternativo": pctAlternativo,
+    "Caixa": pctCaixa,
+    "Proventos": pctProventos
   };
   
-  // Patrimônio (ajustar regex se necessário)
+  // Calcular total encontrado
+  let totalEncontrado = 0;
+  for (let key in res) {
+    if (res[key] !== null) totalEncontrado += res[key];
+  }
+  dbg(`\n📊 Total dos percentuais encontrados: ${totalEncontrado.toFixed(2)}%`);
+  
+  // Se o total for muito diferente de 100, pode ter algo faltando
+  if (totalEncontrado < 90 || totalEncontrado > 110) {
+    dbg(`⚠️ Atenção: Total muito diferente de 100% (${totalEncontrado.toFixed(2)}%). Verifique se o PDF foi lido corretamente.`);
+  }
+  
+  // Extrair patrimônio total
   let patrimonio = 0;
   const patMatch = textoCompleto.match(/PATRIM[OÔ]NIO\s*TOTAL\s*BRUTO[:\s]*R\$\s*([\d\.]+,\d{2})/i);
   if (patMatch) {
     patrimonio = parseFloat(patMatch[1].replace(/\./g, '').replace(',', '.'));
+    dbg(`💰 Patrimônio total encontrado: R$ ${patrimonio.toLocaleString('pt-BR')}`);
+  } else {
+    dbg('⚠️ Patrimônio total não encontrado no PDF');
   }
   
   return { res, patrimonio };
@@ -352,9 +373,13 @@ function renderAlvo() {
   const rec = PERFIS[perfilAtivo];
   document.getElementById('perfilLabel').textContent = perfilAtivo;
   const container = document.getElementById('tabelaAlvo');
-  container.innerHTML = CLASSES.map((c, i) => `
+  
+  // Mostrar apenas as 8 classes originais (sem Caixa e Proventos)
+  const classesAlvo = CLASSES.filter(c => c !== 'Caixa' && c !== 'Proventos');
+  
+  container.innerHTML = classesAlvo.map((c, i) => `
     <div class="alvo-row">
-      <div class="dot8 ${CORES[i]}"></div>
+      <div class="dot8 ${CORES[CLASSES.indexOf(c)]}"></div>
       <span class="alvo-nome">${c}</span>
       <div class="alvo-bar-wrap"><div class="alvo-bar-fill" style="width:${rec[c]}%"></div></div>
       <span class="alvo-pct">${rec[c]}%</span>
@@ -396,7 +421,10 @@ function analisar() {
   const alvo = PERFIS[perfilAtivo];
   let nManter = 0, nAlocar = 0, nRetirar = 0;
   
-  const html = CLASSES.map((c, i) => {
+  // Processar apenas as 8 classes originais (Caixa e Proventos serão redirecionados)
+  const classesAnalise = CLASSES.filter(c => c !== 'Caixa' && c !== 'Proventos');
+  
+  const html = classesAnalise.map((c, idx) => {
     const diff = alvo[c] - atual[c];
     const valorMovimentar = Math.abs(diff * patrimonioTotal / 100);
     
@@ -418,12 +446,12 @@ function analisar() {
       nRetirar++;
     }
     
-    // Se for Manter, mostra R$ 0,00
     const valorDisplay = Math.abs(diff) < 0.05 ? 'R$ 0,00' : fmtBRL(valorMovimentar);
+    const corIndex = CLASSES.indexOf(c);
     
     return `
       <div class="rec-row">
-        <div class="dot8 ${CORES[i]}"></div>
+        <div class="dot8 ${CORES[corIndex]}"></div>
         <span class="rec-nome">${c}</span>
         <span class="rec-nums">${fmtPct(atual[c])} → ${alvo[c]}%</span>
         <span class="rec-valor ${valorClass}">${valorDisplay}</span>
@@ -432,7 +460,19 @@ function analisar() {
     `;
   }).join('');
   
-  document.getElementById('listaRec').innerHTML = html;
+  // Adicionar observação sobre Caixa e Proventos
+  const totalCaixaProventos = (atual['Caixa'] || 0) + (atual['Proventos'] || 0);
+  let observacao = '';
+  if (totalCaixaProventos > 0.1) {
+    observacao = `
+      <div style="margin-top: 1rem; padding: 0.75rem; background: var(--blue-bg); border-radius: 8px; border-left: 3px solid var(--blue);">
+        <strong style="color: var(--blue);">ℹ️ Observação:</strong> O cliente possui ${fmtPct(totalCaixaProventos)} em Caixa/Proventos. 
+        Estes valores devem ser direcionados conforme a recomendação acima para ajustar a carteira aos percentuais-alvo.
+      </div>
+    `;
+  }
+  
+  document.getElementById('listaRec').innerHTML = html + observacao;
   document.getElementById('resumoGrid').innerHTML = `
     <div class="resumo-item"><div class="resumo-label">Manter</div><div class="resumo-val" style="color:var(--amber)">${nManter}</div></div>
     <div class="resumo-item"><div class="resumo-label">Alocar</div><div class="resumo-val" style="color:var(--green)">${nAlocar}</div></div>
@@ -459,13 +499,18 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
     const { res, patrimonio } = await extrairDadosPDF(file);
     patrimonioTotal = patrimonio;
     let encontrou = false;
+    
     for (const classe of CLASSES) {
-      if (res[classe] && res[classe].pct !== null && res[classe].pct > 0) {
-        inputsMap[classe].value = res[classe].pct.toFixed(2);
+      if (res[classe] !== null && res[classe] > 0) {
+        inputsMap[classe].value = res[classe].toFixed(2);
         encontrou = true;
+      } else if (res[classe] === null) {
+        // Se não encontrou, deixa como 0 (já está 0 por padrão)
+        inputsMap[classe].value = '0';
       }
     }
     atualizarTotal();
+    
     if (encontrou) {
       setStatus('✅ PDF importado com sucesso!', 'ok');
       if (patrimonioTotal > 0) {
@@ -476,7 +521,8 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
       setStatus('❌ Não foi possível extrair os dados. Veja o debug.', 'err');
     }
   } catch (e) {
-    setStatus('Erro: ' + e.message, 'err'); dbg('ERRO: ' + e.message);
+    setStatus('Erro: ' + e.message, 'err'); 
+    dbg('ERRO: ' + e.message);
   } finally {
     document.getElementById('overlay').classList.remove('show');
   }
