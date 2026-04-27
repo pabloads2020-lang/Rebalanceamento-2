@@ -299,7 +299,7 @@ function atualizarTotal() {
   let t = 0;
   CLASSES.forEach(c => { t += parseFloat(inputsMap[c]?.value || 0) || 0; });
   document.getElementById('totalVal').textContent = fmtPct(t);
-  document.getElementById('totalBar').className = 'total-bar ' + (Math.abs(t - 100) < 0.1 ? 'total-ok' : 'total-err');
+  document.getElementById('totalBar').className = 'total-bar ' + (Math.abs(t - 100) < 1 ? 'total-ok' : 'total-err');
 }
 
 async function extrairDadosPDF(file) {
@@ -350,7 +350,6 @@ async function extrairDadosPDF(file) {
       const match = secaoAlvo.match(regex);
       
       if (match) {
-        // VALOR EXATO SEM ARREDONDAMENTO!
         const valor = parseFloat(match[1] + '.' + match[2]);
         dbg(`✅ ${nomeBusca}: ${match[1]},${match[2]}% (exato)`);
         return valor;
@@ -474,8 +473,9 @@ function analisar() {
     total += atual[c];
   });
   
-  if (Math.abs(total - 100) > 0.1) {
-    setStatus(`Total deve ser 100% (atual: ${fmtPct(total)})`, 'err');
+  // TOLERÂNCIA AJUSTADA PARA 1% (aceita de 99% a 101%)
+  if (Math.abs(total - 100) > 1) {
+    setStatus(`Total deve ser próximo de 100% (atual: ${fmtPct(total)}). Tolerância de 1%`, 'err');
     return;
   }
   
@@ -570,7 +570,6 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
     
     for (const classe of CLASSES) {
       if (res[classe] !== null && res[classe] !== undefined && res[classe] > 0) {
-        // VALOR EXATO SEM ARREDONDAMENTO - usando toFixed(2) mantém as 2 casas decimais originais
         inputsMap[classe].value = res[classe].toFixed(2);
         encontrou = true;
       } else {
