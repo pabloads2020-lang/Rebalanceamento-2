@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rebalanceador de Carteira · PBF (10 Classes + PDF Adaptativo)</title>
+<title>Rebalanceador de Carteira · PBF (11 Classes + Fundos Listados)</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Atkinson+Hyperlegible:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
@@ -107,6 +107,7 @@ body {
 .c7 { background: #95a5a6; }
 .c8 { background: #f1c40f; }
 .c9 { background: #e84393; }
+.c10 { background: #00cec9; }
 .classe-nome { flex: 1; font-size: 14px; }
 .classe-input { width: 80px; padding: 8px 10px; text-align: right; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 7px; color: var(--text); font-size: 15px; font-weight: 600; }
 .classe-input:focus { outline: none; border-color: var(--gold); }
@@ -161,7 +162,7 @@ body {
 <header class="header">
   <div class="header-logo">
     <div class="dot">PBF</div>
-    Rebalanceador de Carteira · 10 Classes
+    Rebalanceador de Carteira · 11 Classes
   </div>
   <div class="header-right">
     <div class="header-date" id="hDate"></div>
@@ -173,7 +174,7 @@ body {
   <div class="card">
     <div class="card-title">
       Importar relatório XP (PDF)
-      <span>🔍 Suporte a Caixa e Proventos</span>
+      <span>🔍 Suporte a Caixa, Proventos e Fundos Listados</span>
     </div>
     <div class="upload-row">
       <label class="file-label" for="filePdf"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg><span id="fileName">Selecionar arquivo PDF...</span></label>
@@ -227,7 +228,7 @@ body {
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ========== PERFIS ORIGINAIS ==========
+// ========== PERFIS ORIGINAIS (sem Fundos Listados na recomendação) ==========
 const PERFIS = {
   Conservador: {
     "Renda Fixa Pós": 85,
@@ -261,7 +262,7 @@ const PERFIS = {
   }
 };
 
-// CLASSES COMPLETAS
+// CLASSES COMPLETAS (11 classes agora)
 const CLASSES = [
   "Renda Fixa Pós",
   "Renda Fixa Pré",
@@ -272,10 +273,11 @@ const CLASSES = [
   "Renda Variável Global",
   "Alternativo",
   "Caixa",
-  "Proventos"
+  "Proventos",
+  "Fundos Listados"
 ];
 
-const CORES = ["c0","c1","c2","c3","c4","c5","c6","c7","c8","c9"];
+const CORES = ["c0","c1","c2","c3","c4","c5","c6","c7","c8","c9","c10"];
 
 let perfilAtivo = "Moderado";
 let inputsMap = {};
@@ -379,6 +381,7 @@ async function extrairDadosPDF(file) {
   const pctRVGlobal = extrairPctAdaptativo('Renda Variável Global');
   const pctCaixa = extrairPctAdaptativo('Caixa');
   const pctProventos = extrairPctAdaptativo('Proventos');
+  const pctFundosListados = extrairPctAdaptativo('Fundos Listados');
   
   const res = {
     "Renda Fixa Pós": pctPos,
@@ -390,7 +393,8 @@ async function extrairDadosPDF(file) {
     "Renda Variável Global": pctRVGlobal,
     "Alternativo": pctAlternativo,
     "Caixa": pctCaixa,
-    "Proventos": pctProventos
+    "Proventos": pctProventos,
+    "Fundos Listados": pctFundosListados
   };
   
   let totalEncontrado = 0;
@@ -435,7 +439,8 @@ function renderAlvo() {
   document.getElementById('perfilLabel').textContent = perfilAtivo;
   const container = document.getElementById('tabelaAlvo');
   
-  const classesAlvo = CLASSES.filter(c => c !== 'Caixa' && c !== 'Proventos');
+  // Classes que aparecem na recomendação (exclui Caixa, Proventos e Fundos Listados)
+  const classesAlvo = CLASSES.filter(c => c !== 'Caixa' && c !== 'Proventos' && c !== 'Fundos Listados');
   
   container.innerHTML = classesAlvo.map((c, i) => `
     <div class="alvo-row">
@@ -473,7 +478,7 @@ function analisar() {
     total += atual[c];
   });
   
-  // TOLERÂNCIA AJUSTADA PARA 1% (aceita de 99% a 101%)
+  // TOLERÂNCIA DE 1% (aceita de 99% a 101%)
   if (Math.abs(total - 100) > 1) {
     setStatus(`Total deve ser próximo de 100% (atual: ${fmtPct(total)}). Tolerância de 1%`, 'err');
     return;
@@ -482,7 +487,8 @@ function analisar() {
   const alvo = PERFIS[perfilAtivo];
   let nManter = 0, nAlocar = 0, nRetirar = 0;
   
-  const classesAnalise = CLASSES.filter(c => c !== 'Caixa' && c !== 'Proventos');
+  // Classes que serão analisadas (exclui Caixa, Proventos e Fundos Listados da recomendação)
+  const classesAnalise = CLASSES.filter(c => c !== 'Caixa' && c !== 'Proventos' && c !== 'Fundos Listados');
   
   const html = classesAnalise.map((c, idx) => {
     const diff = alvo[c] - atual[c];
@@ -520,12 +526,12 @@ function analisar() {
     `;
   }).join('');
   
-  const totalCaixaProventos = (atual['Caixa'] || 0) + (atual['Proventos'] || 0);
+  const totalOutros = (atual['Caixa'] || 0) + (atual['Proventos'] || 0) + (atual['Fundos Listados'] || 0);
   let observacao = '';
-  if (totalCaixaProventos > 0.05) {
+  if (totalOutros > 0.05) {
     observacao = `
       <div style="margin-top: 1rem; padding: 0.75rem; background: var(--blue-bg); border-radius: 8px; border-left: 3px solid var(--blue);">
-        <strong style="color: var(--blue);">ℹ️ Observação:</strong> O cliente possui ${fmtPct(totalCaixaProventos)} em Caixa/Proventos. 
+        <strong style="color: var(--blue);">ℹ️ Observação:</strong> O cliente possui ${fmtPct(totalOutros)} em Caixa/Proventos/Fundos Listados. 
         Estes valores devem ser <strong>direcionados</strong> conforme as recomendações acima para ajustar a carteira aos percentuais-alvo.
       </div>
     `;
