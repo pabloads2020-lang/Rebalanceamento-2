@@ -287,40 +287,51 @@ async function extrairDadosPDF(file) {
   dbg(secaoAlvo.substring(0, 1500));
   
   // ========== FUNÇÃO ADAPTATIVA PARA EXTRAIR PERCENTUAIS ==========
-  // Essa função lida com o formato exato do PDF: "Pós Fixado   ( 63 , 36 %)" 
-  function extrairPctAdaptativo(nomePDF) {
-    // Limpa espaços extras do nome para busca flexível
-    const nomeLimpo = nomePDF.replace(/\s+/g, '\\s*');
+  // Esta função lida com o formato exato do PDF, incluindo "In fl ação"
+  function extrairPctAdaptativo(nomeBusca, variacoesExtras = []) {
+    // Todas as variações possíveis do nome
+    const variacoes = [
+      nomeBusca,
+      nomeBusca.replace(/\s+/g, '\\s*'), // com espaços opcionais
+      ...variacoesExtras
+    ];
     
-    // Padrão: NOME, espaços, (, espaços, números, espaços, ,, espaços, números, espaços, %)
-    // Exemplo: "Pós Fixado   ( 63 , 36 %)"
-    const regex = new RegExp(nomeLimpo + '\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{2})\\s*%\\)', 'i');
-    const match = secaoAlvo.match(regex);
+    // Para Inflação, adiciona variações específicas
+    if (nomeBusca === 'Inflação') {
+      variacoes.push('In\\s*fl\\s*ação', 'In\\s*fl\\s*ação', 'In fl ação');
+    }
     
-    if (match) {
-      const valor = parseFloat(match[1] + '.' + match[2]);
-      dbg(`✅ ${nomePDF}: ${valor}%`);
+    for (const variacao of variacoes) {
+      // Padrão que captura números no formato "63 , 36"
+      const regex = new RegExp(variacao + '\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{2})\\s*%\\)', 'i');
+      const match = secaoAlvo.match(regex);
+      
+      if (match) {
+        const valor = parseFloat(match[1] + '.' + match[2]);
+        dbg(`✅ ${nomeBusca}: ${valor}%`);
+        return valor;
+      }
+    }
+    
+    // Tentativa final: busca pelo nome aproximado (remove todos os espaços)
+    const nomeAproximado = nomeBusca.replace(/\s+/g, '');
+    const regexFinal = new RegExp('([A-Za-zÀ-ÖØ-öø-ÿ\\s]*' + nomeAproximado + '[A-Za-zÀ-ÖØ-öø-ÿ\\s]*)\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{2})\\s*%\\)', 'i');
+    const matchFinal = secaoAlvo.match(regexFinal);
+    
+    if (matchFinal) {
+      const valor = parseFloat(matchFinal[2] + '.' + matchFinal[3]);
+      dbg(`✅ ${nomeBusca}: ${valor}% (encontrado por aproximação)`);
       return valor;
     }
     
-    // Tentativa alternativa: sem os espaços no nome (mais simples)
-    const regex2 = new RegExp(nomePDF.replace(/\s+/g, '\\s*') + '\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{2})\\s*%\\)', 'i');
-    const match2 = secaoAlvo.match(regex2);
-    if (match2) {
-      const valor = parseFloat(match2[1] + '.' + match2[2]);
-      dbg(`✅ ${nomePDF} (alternativo): ${valor}%`);
-      return valor;
-    }
-    
-    dbg(`❌ ${nomePDF}: não encontrado`);
+    dbg(`❌ ${nomeBusca}: não encontrado`);
     return null;
   }
   
-  // ========== EXTRAIR TODOS OS PERCENTUAIS ==========
-  // Usando os nomes EXATAMENTE como aparecem no PDF
+  // Extrair todos os percentuais
   const pctPos = extrairPctAdaptativo('Pós Fixado');
   const pctPre = extrairPctAdaptativo('Pré Fixado');
-  const pctInf = extrairPctAdaptativo('Inflação');
+  const pctInf = extrairPctAdaptativo('Inflação', ['In fl ação', 'Inflação']);
   const pctMulti = extrairPctAdaptativo('Multimercado');
   const pctRV = extrairPctAdaptativo('Renda Variável Brasil');
   const pctAlternativo = extrairPctAdaptativo('Alternativo');
@@ -349,27 +360,14 @@ async function extrairDadosPDF(file) {
   }
   dbg(`\n📊 Total dos percentuais encontrados: ${totalEncontrado.toFixed(2)}%`);
   
-  // Se o total for muito diferente de 100, pode ter algo faltando
-  if (totalEncontrado < 90 || totalEncontrado > 110) {
-    dbg(`⚠️ Atenção: Total muito diferente de 100% (${totalEncontrado.toFixed(2)}%). Verifique se o PDF foi lido corretamente.`);
-  }
-  
   // Extrair patrimônio total
   let patrimonio = 0;
-  // Padrão mais flexível para patrimônio
   const patMatch = textoCompleto.match(/PATRIM[OÔ]NIO\s*TOTAL\s*BRUTO[:\s]*R\$\s*([\d\.]+,\d{2})/i);
   if (patMatch) {
     patrimonio = parseFloat(patMatch[1].replace(/\./g, '').replace(',', '.'));
     dbg(`💰 Patrimônio total encontrado: R$ ${patrimonio.toLocaleString('pt-BR')}`);
   } else {
-    // Tentativa alternativa
-    const patMatch2 = textoCompleto.match(/PATRIM[OÔ]NIO.*?R\$\s*([\d\.]+,\d{2})/i);
-    if (patMatch2) {
-      patrimonio = parseFloat(patMatch2[1].replace(/\./g, '').replace(',', '.'));
-      dbg(`💰 Patrimônio total (alternativo): R$ ${patrimonio.toLocaleString('pt-BR')}`);
-    } else {
-      dbg('⚠️ Patrimônio total não encontrado no PDF');
-    }
+    dbg('⚠️ Patrimônio total não encontrado no PDF');
   }
   
   return { res, patrimonio };
@@ -529,7 +527,7 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
       if (res[classe] !== null && res[classe] > 0) {
         inputsMap[classe].value = res[classe].toFixed(2);
         encontrou = true;
-      } else if (res[classe] === null || res[classe] === 0) {
+      } else {
         inputsMap[classe].value = '0';
       }
     }
