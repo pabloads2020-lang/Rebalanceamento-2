@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rebalanceador de Carteira · PBF (8 Classes + Valores Coloridos)</title>
+<title>Rebalanceador de Carteira · PBF (10 Classes + Caixa/Proventos)</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
@@ -86,6 +86,8 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 .c5 { background: #1abc9c; }
 .c6 { background: #e67e22; }
 .c7 { background: #95a5a6; }
+.c8 { background: #f1c40f; }
+.c9 { background: #e84393; }
 .classe-nome { flex: 1; font-size: 14px; }
 .classe-input { width: 72px; padding: 6px 10px; text-align: right; background: var(--input-bg); border: 1px solid var(--input-border); border-radius: 7px; color: var(--text); font-size: 14px; font-family: 'DM Mono', monospace; }
 .classe-input:focus { outline: none; border-color: var(--gold); }
@@ -132,7 +134,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 <header class="header">
   <div class="header-logo">
     <div class="dot">PBF</div>
-    Rebalanceador de Carteira · 8 Classes
+    Rebalanceador de Carteira · 10 Classes
   </div>
   <div class="header-right">
     <div class="header-date" id="hDate"></div>
@@ -186,37 +188,43 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ========== PERCENTUAIS EXATOS SEGUNDO A IMAGEM (8 CLASSES) ==========
+// ========== PERCENTUAIS COM CAIXA E PROVENTOS (10 CLASSES) ==========
 const PERFIS = {
   Conservador: {
-    "Renda Fixa Pós": 85,
-    "Renda Fixa Pré": 15,
-    "Renda Fixa Inflação": 0,
-    "Multiestratégia": 0,
-    "Renda Variável": 0,
+    "Renda Fixa Pós": 80,
+    "Renda Fixa Pré": 10,
+    "Renda Fixa Inflação": 5,
+    "Multiestratégia": 2,
+    "Renda Variável": 1,
     "Renda Fixa Global": 0,
     "Renda Variável Global": 0,
-    "Alternativo": 0
+    "Alternativo": 0,
+    "Caixa": 2,
+    "Proventos": 0
   },
   Moderado: {
-    "Renda Fixa Pós": 54,
-    "Renda Fixa Pré": 13,
-    "Renda Fixa Inflação": 20,
+    "Renda Fixa Pós": 45,
+    "Renda Fixa Pré": 10,
+    "Renda Fixa Inflação": 15,
     "Multiestratégia": 5,
-    "Renda Variável": 4,
-    "Renda Fixa Global": 0,
-    "Renda Variável Global": 4,
-    "Alternativo": 0
+    "Renda Variável": 10,
+    "Renda Fixa Global": 5,
+    "Renda Variável Global": 5,
+    "Alternativo": 0,
+    "Caixa": 5,
+    "Proventos": 0
   },
   Agressivo: {
-    "Renda Fixa Pós": 44,
-    "Renda Fixa Pré": 15,
-    "Renda Fixa Inflação": 24,
+    "Renda Fixa Pós": 30,
+    "Renda Fixa Pré": 8,
+    "Renda Fixa Inflação": 10,
     "Multiestratégia": 5,
-    "Renda Variável": 6,
-    "Renda Fixa Global": 0,
-    "Renda Variável Global": 6,
-    "Alternativo": 0
+    "Renda Variável": 20,
+    "Renda Fixa Global": 5,
+    "Renda Variável Global": 15,
+    "Alternativo": 2,
+    "Caixa": 5,
+    "Proventos": 0
   }
 };
 
@@ -228,10 +236,12 @@ const CLASSES = [
   "Renda Variável",
   "Renda Fixa Global",
   "Renda Variável Global",
-  "Alternativo"
+  "Alternativo",
+  "Caixa",
+  "Proventos"
 ];
 
-const CORES = ["c0","c1","c2","c3","c4","c5","c6","c7"];
+const CORES = ["c0","c1","c2","c3","c4","c5","c6","c7","c8","c9"];
 
 let perfilAtivo = "Moderado";
 let inputsMap = {};
@@ -260,21 +270,21 @@ async function extrairDadosPDF(file) {
     textoCompleto += pageText + '\n';
   }
   
-  // Encontrar seção de Estratégias (páginas 5-6)
+  // Buscar a seção correta
   let secaoAlvo = textoCompleto;
   const idxEstrategias = textoCompleto.indexOf('Estratégias');
   const idxComposicao = textoCompleto.indexOf('COMPOSIÇÃO');
   
   if (idxEstrategias !== -1) {
-    secaoAlvo = textoCompleto.substring(idxEstrategias, idxEstrategias + 2000);
+    secaoAlvo = textoCompleto.substring(idxEstrategias, idxEstrategias + 3000);
   } else if (idxComposicao !== -1) {
-    secaoAlvo = textoCompleto.substring(idxComposicao, idxComposicao + 2000);
+    secaoAlvo = textoCompleto.substring(idxComposicao, idxComposicao + 3000);
   }
   
-  // Função para extrair percentuais (suporta espaços dentro do nome e nos números)
+  // Função para extrair percentuais exatos
   function extrairPct(nome) {
-    const partes = nome.split('');
-    const regex = new RegExp(partes.join('\\s*') + '\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{2})\\s*%\\)', 'i');
+    // Permite espaços variáveis, vírgula como separador decimal
+    const regex = new RegExp(nome + '\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{2})\\s*%\\)', 'i');
     const match = secaoAlvo.match(regex);
     if (match) {
       return parseFloat(match[1] + '.' + match[2]);
@@ -282,7 +292,7 @@ async function extrairDadosPDF(file) {
     return null;
   }
   
-  // Extrair cada classe do PDF
+  // Extrair cada classe
   const pctPos = extrairPct('Pós Fixado');
   const pctPre = extrairPct('Pré Fixado');
   const pctInf = extrairPct('Inflação');
@@ -291,7 +301,11 @@ async function extrairDadosPDF(file) {
   const pctAlternativo = extrairPct('Alternativo');
   const pctRVGlobal = extrairPct('Renda Variável Global');
   
-  // Mapear para as classes do sistema
+  // NOVAS EXTRAÇÕES: CAIXA E PROVENTOS
+  const pctCaixa = extrairPct('Caixa');
+  const pctProventos = extrairPct('Proventos');
+  
+  // Mapear para as 10 classes
   const res = {
     "Renda Fixa Pós": { pct: pctPos, val: 0 },
     "Renda Fixa Pré": { pct: pctPre, val: 0 },
@@ -300,10 +314,12 @@ async function extrairDadosPDF(file) {
     "Renda Variável": { pct: pctRV, val: 0 },
     "Renda Fixa Global": { pct: 0, val: 0 },
     "Renda Variável Global": { pct: pctRVGlobal, val: 0 },
-    "Alternativo": { pct: pctAlternativo, val: 0 }
+    "Alternativo": { pct: pctAlternativo, val: 0 },
+    "Caixa": { pct: pctCaixa, val: 0 },
+    "Proventos": { pct: pctProventos, val: 0 }
   };
   
-  // Patrimônio
+  // Patrimônio (ajustar regex se necessário)
   let patrimonio = 0;
   const patMatch = textoCompleto.match(/PATRIM[OÔ]NIO\s*TOTAL\s*BRUTO[:\s]*R\$\s*([\d\.]+,\d{2})/i);
   if (patMatch) {
