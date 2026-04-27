@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rebalanceador de Carteira · PBF (10 Classes + Inflação Corrigida)</title>
+<title>Rebalanceador de Carteira · PBF (10 Classes + PDF Adaptativo)</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
@@ -187,7 +187,7 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ========== PERFIS ORIGINAIS (SEM CAIXA E PROVENTOS) ==========
+// ========== PERFIS ORIGINAIS ==========
 const PERFIS = {
   Conservador: {
     "Renda Fixa Pós": 85,
@@ -221,7 +221,7 @@ const PERFIS = {
   }
 };
 
-// CLASSES COMPLETAS (8 originais + Caixa + Proventos)
+// CLASSES COMPLETAS
 const CLASSES = [
   "Renda Fixa Pós",
   "Renda Fixa Pré",
@@ -268,7 +268,7 @@ async function extrairDadosPDF(file) {
   dbg('=== TRECHO DO PDF (primeiros 2000 caracteres) ===');
   dbg(textoCompleto.substring(0, 2000));
   
-  // Buscar a seção correta (páginas 5-6)
+  // Buscar a seção correta
   let secaoAlvo = textoCompleto;
   const idxEstrategias = textoCompleto.indexOf('Estratégias');
   const idxComposicao = textoCompleto.indexOf('COMPOSIÇÃO');
@@ -286,30 +286,47 @@ async function extrairDadosPDF(file) {
   dbg('Trecho da seção alvo:');
   dbg(secaoAlvo.substring(0, 1500));
   
-  // Função para extrair percentuais (suporta espaços e quebras de linha)
-  function extrairPct(nome) {
-    // Regex flexível: permite espaços variáveis, quebras de linha e vírgula como separador decimal
-    const regex = new RegExp(nome + '\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{2})\\s*%\\)', 'i');
+  // ========== FUNÇÃO ADAPTATIVA PARA EXTRAIR PERCENTUAIS ==========
+  // Essa função lida com o formato exato do PDF: "Pós Fixado   ( 63 , 36 %)" 
+  function extrairPctAdaptativo(nomePDF) {
+    // Limpa espaços extras do nome para busca flexível
+    const nomeLimpo = nomePDF.replace(/\s+/g, '\\s*');
+    
+    // Padrão: NOME, espaços, (, espaços, números, espaços, ,, espaços, números, espaços, %)
+    // Exemplo: "Pós Fixado   ( 63 , 36 %)"
+    const regex = new RegExp(nomeLimpo + '\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{2})\\s*%\\)', 'i');
     const match = secaoAlvo.match(regex);
+    
     if (match) {
       const valor = parseFloat(match[1] + '.' + match[2]);
-      dbg(`✅ ${nome}: ${valor}%`);
+      dbg(`✅ ${nomePDF}: ${valor}%`);
       return valor;
     }
-    dbg(`❌ ${nome}: não encontrado`);
+    
+    // Tentativa alternativa: sem os espaços no nome (mais simples)
+    const regex2 = new RegExp(nomePDF.replace(/\s+/g, '\\s*') + '\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{2})\\s*%\\)', 'i');
+    const match2 = secaoAlvo.match(regex2);
+    if (match2) {
+      const valor = parseFloat(match2[1] + '.' + match2[2]);
+      dbg(`✅ ${nomePDF} (alternativo): ${valor}%`);
+      return valor;
+    }
+    
+    dbg(`❌ ${nomePDF}: não encontrado`);
     return null;
   }
   
-  // Extrair todas as classes do PDF (com os nomes EXATOS do relatório)
-  const pctPos = extrairPct('Pós Fixado');
-  const pctPre = extrairPct('Pré Fixado');
-  const pctInf = extrairPct('Inflação');  // CORRIGIDO: agora lê corretamente
-  const pctMulti = extrairPct('Multimercado');
-  const pctRV = extrairPct('Renda Variável Brasil');
-  const pctAlternativo = extrairPct('Alternativo');
-  const pctRVGlobal = extrairPct('Renda Variável Global');
-  const pctCaixa = extrairPct('Caixa');
-  const pctProventos = extrairPct('Proventos');
+  // ========== EXTRAIR TODOS OS PERCENTUAIS ==========
+  // Usando os nomes EXATAMENTE como aparecem no PDF
+  const pctPos = extrairPctAdaptativo('Pós Fixado');
+  const pctPre = extrairPctAdaptativo('Pré Fixado');
+  const pctInf = extrairPctAdaptativo('Inflação');
+  const pctMulti = extrairPctAdaptativo('Multimercado');
+  const pctRV = extrairPctAdaptativo('Renda Variável Brasil');
+  const pctAlternativo = extrairPctAdaptativo('Alternativo');
+  const pctRVGlobal = extrairPctAdaptativo('Renda Variável Global');
+  const pctCaixa = extrairPctAdaptativo('Caixa');
+  const pctProventos = extrairPctAdaptativo('Proventos');
   
   // Mapear para as classes do sistema
   const res = {
@@ -328,7 +345,7 @@ async function extrairDadosPDF(file) {
   // Calcular total encontrado
   let totalEncontrado = 0;
   for (let key in res) {
-    if (res[key] !== null) totalEncontrado += res[key];
+    if (res[key] !== null && res[key] > 0) totalEncontrado += res[key];
   }
   dbg(`\n📊 Total dos percentuais encontrados: ${totalEncontrado.toFixed(2)}%`);
   
@@ -339,12 +356,20 @@ async function extrairDadosPDF(file) {
   
   // Extrair patrimônio total
   let patrimonio = 0;
+  // Padrão mais flexível para patrimônio
   const patMatch = textoCompleto.match(/PATRIM[OÔ]NIO\s*TOTAL\s*BRUTO[:\s]*R\$\s*([\d\.]+,\d{2})/i);
   if (patMatch) {
     patrimonio = parseFloat(patMatch[1].replace(/\./g, '').replace(',', '.'));
     dbg(`💰 Patrimônio total encontrado: R$ ${patrimonio.toLocaleString('pt-BR')}`);
   } else {
-    dbg('⚠️ Patrimônio total não encontrado no PDF');
+    // Tentativa alternativa
+    const patMatch2 = textoCompleto.match(/PATRIM[OÔ]NIO.*?R\$\s*([\d\.]+,\d{2})/i);
+    if (patMatch2) {
+      patrimonio = parseFloat(patMatch2[1].replace(/\./g, '').replace(',', '.'));
+      dbg(`💰 Patrimônio total (alternativo): R$ ${patrimonio.toLocaleString('pt-BR')}`);
+    } else {
+      dbg('⚠️ Patrimônio total não encontrado no PDF');
+    }
   }
   
   return { res, patrimonio };
@@ -421,7 +446,7 @@ function analisar() {
   const alvo = PERFIS[perfilAtivo];
   let nManter = 0, nAlocar = 0, nRetirar = 0;
   
-  // Processar apenas as 8 classes originais (Caixa e Proventos serão redirecionados)
+  // Processar apenas as 8 classes originais
   const classesAnalise = CLASSES.filter(c => c !== 'Caixa' && c !== 'Proventos');
   
   const html = classesAnalise.map((c, idx) => {
@@ -463,11 +488,11 @@ function analisar() {
   // Adicionar observação sobre Caixa e Proventos
   const totalCaixaProventos = (atual['Caixa'] || 0) + (atual['Proventos'] || 0);
   let observacao = '';
-  if (totalCaixaProventos > 0.1) {
+  if (totalCaixaProventos > 0.05) {
     observacao = `
       <div style="margin-top: 1rem; padding: 0.75rem; background: var(--blue-bg); border-radius: 8px; border-left: 3px solid var(--blue);">
         <strong style="color: var(--blue);">ℹ️ Observação:</strong> O cliente possui ${fmtPct(totalCaixaProventos)} em Caixa/Proventos. 
-        Estes valores devem ser direcionados conforme a recomendação acima para ajustar a carteira aos percentuais-alvo.
+        Estes valores devem ser <strong>direcionados</strong> conforme as recomendações acima para ajustar a carteira aos percentuais-alvo.
       </div>
     `;
   }
@@ -504,8 +529,7 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
       if (res[classe] !== null && res[classe] > 0) {
         inputsMap[classe].value = res[classe].toFixed(2);
         encontrou = true;
-      } else if (res[classe] === null) {
-        // Se não encontrou, deixa como 0 (já está 0 por padrão)
+      } else if (res[classe] === null || res[classe] === 0) {
         inputsMap[classe].value = '0';
       }
     }
