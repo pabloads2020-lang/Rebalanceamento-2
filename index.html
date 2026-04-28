@@ -355,10 +355,11 @@ function gerarRelatorioPBF() {
   var classesComDados = [];
   for (var nome in aloc) {
     if (aloc.hasOwnProperty(nome) && aloc[nome] !== null && aloc[nome] > 0) {
+      var retorno = ret[nome] !== undefined ? ret[nome] : null;
       classesComDados.push({
         nome: nome,
         alocacao: aloc[nome],
-        retorno: ret[nome] !== undefined ? ret[nome] : null
+        retorno: retorno
       });
     }
   }
@@ -402,7 +403,7 @@ function gerarRelatorioPBF() {
     html += `<div class="relatorio-paragrafo"><strong>📈 Desempenho por estratégia:</strong><br>`;
     for (var j = 0; j < classesComDados.length; j++) {
       var item = classesComDados[j];
-      var retornoStr = item.retorno !== null ? fmtPctRelatorio(item.retorno) : "não disponível";
+      var retornoStr = (item.retorno !== null) ? fmtPctRelatorio(item.retorno) : "não disponível";
       var retornoClass = (item.retorno !== null && item.retorno >= 0) ? 'relatorio-positivo' : 'relatorio-negativo';
       html += `<span class="relatorio-classe-item">• <strong>${item.nome}</strong> (${fmtPctSimples(item.alocacao)}% da carteira): <span class="${retornoClass}">${retornoStr}</span></span>`;
     }
@@ -459,15 +460,25 @@ async function extrairDadosPDF(file) {
   dbg(textoCompleto.substring(0, 3000));
   
   // ========== 1. EXTRAIR DATA DE REFERÊNCIA ==========
-  var dataMatch = textoCompleto.match(/Data de Referência\s*(\d{2}\/\d{2}\/\d{4})/i);
+  // Formato: "Data de Referência  2985252   Digital   Lucas Bossan   31/03/2026"
+  var dataMatch = textoCompleto.match(/Data de Referência\s*(?:\d+\s+\w+\s+\w+\s+)?(\d{2}\/\d{2}\/\d{4})/i);
   if (dataMatch) {
     var partes = dataMatch[1].split('/');
     var meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
     dadosCarteiraGlobal.dataReferencia = meses[parseInt(partes[1])-1] + ' de ' + partes[2];
-    dbg('📅 Data: ' + dadosCarteiraGlobal.dataReferencia);
+    dbg('📅 Data encontrada: ' + dadosCarteiraGlobal.dataReferencia);
+  } else {
+    // Tentativa alternativa
+    var dataMatch2 = textoCompleto.match(/\d{2}\/\d{2}\/\d{4}/);
+    if (dataMatch2) {
+      var partes = dataMatch2[0].split('/');
+      var meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+      dadosCarteiraGlobal.dataReferencia = meses[parseInt(partes[1])-1] + ' de ' + partes[2];
+      dbg('📅 Data encontrada (alternativa): ' + dadosCarteiraGlobal.dataReferencia);
+    }
   }
   
-  // ========== 2. EXTRAIR %CDI DO MÊS (Página 2 - RESUMO DE INFORMAÇÕES) ==========
+  // ========== 2. EXTRAIR RENTABILIDADE MENSAL E %CDI ==========
   // Procura pela tabela RESUMO DE INFORMAÇÕES DA CARTEIRA
   var resumoIndex = textoCompleto.indexOf('RESUMO DE INFORMAÇÕES DA CARTEIRA');
   if (resumoIndex !== -1) {
@@ -475,35 +486,29 @@ async function extrairDadosPDF(file) {
     dbg('=== Trecho do RESUMO ===');
     dbg(trechoResumo.substring(0, 500));
     
-    // Procura pela linha do MÊS e captura o %CDI (quarto campo após MÊS)
-    // Formato: MÊS R$ 253,50 0,77% 63,28% R$ 0,00
-    var mesMatch = trechoResumo.match(/M[ÊE]S\s+R\$\s+[\d\.]+,\d{2}\s+([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%\s+([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i);
+    // Formato: MÊS   R $   253 , 50   0 , 77 %   63 , 28 %   R $   0 , 00
+    var mesMatch = trechoResumo.match(/M[ÊE]S\s+R\$\s+[\d\.]+\s*,\s*\d{2}\s+([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%\s+([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i);
     if (mesMatch) {
-      var pctCdiValor = mesMatch[2].replace(/\s/g, '').replace(',', '.');
-      dadosCarteiraGlobal.pctCdi = parseFloat(pctCdiValor);
-      dbg('📊 %CDI do MÊS: ' + dadosCarteiraGlobal.pctCdi + '%');
-      
-      // A rentabilidade mensal é o primeiro percentual (antes do %CDI)
       var rentabilidadeValor = mesMatch[1].replace(/\s/g, '').replace(',', '.');
       dadosCarteiraGlobal.rentabilidadeMensal = parseFloat(rentabilidadeValor);
       dbg('📈 Rentabilidade do MÊS: ' + dadosCarteiraGlobal.rentabilidadeMensal + '%');
+      
+      var pctCdiValor = mesMatch[2].replace(/\s/g, '').replace(',', '.');
+      dadosCarteiraGlobal.pctCdi = parseFloat(pctCdiValor);
+      dbg('📊 %CDI do MÊS: ' + dadosCarteiraGlobal.pctCdi + '%');
     } else {
-      // Tentativa alternativa
-      var mesMatchAlt = trechoResumo.match(/M[ÊE]S[^\d]*(\d{1,3},\d{2})%\s*(\d{1,3},\d{2})%/i);
-      if (mesMatchAlt) {
-        var pctCdiValor = mesMatchAlt[2].replace(',', '.');
-        dadosCarteiraGlobal.pctCdi = parseFloat(pctCdiValor);
-        dbg('📊 %CDI do MÊS (alt): ' + dadosCarteiraGlobal.pctCdi + '%');
-        
-        var rentabilidadeValor = mesMatchAlt[1].replace(',', '.');
-        dadosCarteiraGlobal.rentabilidadeMensal = parseFloat(rentabilidadeValor);
-        dbg('📈 Rentabilidade do MÊS (alt): ' + dadosCarteiraGlobal.rentabilidadeMensal + '%');
+      // Tentativa com espaços diferentes
+      var mesMatch2 = trechoResumo.match(/M[ÊE]S[\s\S]*?(\d{1,3},\d{2})%\s*(\d{1,3},\d{2})%/i);
+      if (mesMatch2) {
+        dadosCarteiraGlobal.rentabilidadeMensal = parseFloat(mesMatch2[1].replace(',', '.'));
+        dadosCarteiraGlobal.pctCdi = parseFloat(mesMatch2[2].replace(',', '.'));
+        dbg('📈 Rentabilidade MÊS (alt): ' + dadosCarteiraGlobal.rentabilidadeMensal + '%');
+        dbg('📊 %CDI MÊS (alt): ' + dadosCarteiraGlobal.pctCdi + '%');
       }
     }
   }
   
-  // ========== 3. EXTRAIR ALOÇAÇÕES E RETORNOS (Página 5 - COMPOSIÇÃO) ==========
-  var composicaoIndex = textoCompleto.indexOf('COMPOSIÇÃO');
+  // ========== 3. EXTRAIR ALOÇAÇÕES E RETORNOS MENSAIS (Página 5 - COMPOSIÇÃO) ==========
   var estrategiasIndex = textoCompleto.indexOf('Estratégias');
   var secaoAlvo = textoCompleto;
   
@@ -511,9 +516,6 @@ async function extrairDadosPDF(file) {
     secaoAlvo = textoCompleto.substring(estrategiasIndex, estrategiasIndex + 4000);
     dbg('=== SEÇÃO Estratégias/COMPOSIÇÃO ===');
     dbg(secaoAlvo.substring(0, 1500));
-  } else if (composicaoIndex !== -1) {
-    secaoAlvo = textoCompleto.substring(composicaoIndex, composicaoIndex + 4000);
-    dbg('=== SEÇÃO COMPOSIÇÃO ===');
   }
   
   // Função para extrair alocação (valor entre parênteses)
@@ -536,7 +538,8 @@ async function extrairDadosPDF(file) {
     return null;
   }
   
-  // Função para extrair retorno mensal (primeiro número após R$ e antes do %)
+  // Função para extrair retorno mensal (coluna "Mês Atual")
+  // Formato no PDF: "Pós Fixado   ( 84 , 73 %)   R $   36 . 723 , 18   1 , 41 %   3 , 61 % ..."
   function extrairRetornoMensal(nomeBusca) {
     var nomeFormatado = nomeBusca;
     if (nomeBusca === 'Inflação') {
@@ -548,8 +551,8 @@ async function extrairDadosPDF(file) {
     } else {
       nomeFormatado = nomeBusca.replace(/\s+/g, '\\s*');
     }
-    // Padrão: Nome, depois Saldo Bruto (R$ X.XXX,XX), depois o retorno do Mês Atual
-    var regex = new RegExp(nomeFormatado + '[^R]*R\\$\\s+[\\d\\.]+,\\d{2}\\s+([+-]?\\s*\\d{1,3}\\s*,\\s*\\d{2})\\s*%', 'i');
+    // Padrão: Nome, parênteses com %, R$ valor, e aí o primeiro percentual é o Mês Atual
+    var regex = new RegExp(nomeFormatado + '[^\\(]*\\([^)]+\\)\\s*R\\$\\s+[\\d\\.]+,\\d{2}\\s+([+-]?\\s*\\d{1,3}\\s*,\\s*\\d{2})\\s*%', 'i');
     var match = secaoAlvo.match(regex);
     if (match) {
       return parseFloat(match[1].replace(/\s/g, '').replace(',', '.'));
@@ -557,8 +560,8 @@ async function extrairDadosPDF(file) {
     return null;
   }
   
-  // Mapeamento dos nomes
-  var mapaAlocacao = {
+  // Mapeamento dos nomes no PDF para os nomes do sistema
+  var mapaNomes = {
     "Renda Fixa Pós": "Pós Fixado",
     "Renda Fixa Pré": "Pré Fixado",
     "Renda Fixa Inflação": "Inflação",
@@ -572,8 +575,8 @@ async function extrairDadosPDF(file) {
   };
   
   // Extrair alocações e retornos
-  for (var classeSistema in mapaAlocacao) {
-    var nomePdf = mapaAlocacao[classeSistema];
+  for (var classeSistema in mapaNomes) {
+    var nomePdf = mapaNomes[classeSistema];
     var aloc = extrairAlocacao(nomePdf);
     if (aloc !== null) {
       dadosCarteiraGlobal.alocacoes[classeSistema] = aloc;
@@ -594,19 +597,19 @@ async function extrairDadosPDF(file) {
     dbg('💰 Patrimônio: R$ ' + dadosCarteiraGlobal.patrimonio.toLocaleString('pt-BR'));
   }
   
-  // Se não conseguiu extrair a rentabilidade mensal pelo resumo, tenta pelo total da carteira
+  // Fallback: se não conseguiu extrair rentabilidade mensal do resumo, tenta do Portfólio
   if (dadosCarteiraGlobal.rentabilidadeMensal === null) {
-    var totalMatch = textoCompleto.match(/Portf[oó]lio\s*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i);
-    if (totalMatch) {
-      dadosCarteiraGlobal.rentabilidadeMensal = parseFloat(totalMatch[1].replace(/\s/g, '').replace(',', '.'));
-      dbg('📈 Total carteira (fallback): ' + dadosCarteiraGlobal.rentabilidadeMensal + '%');
+    var portfolioMatch = textoCompleto.match(/Portf[oó]lio\s*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i);
+    if (portfolioMatch) {
+      dadosCarteiraGlobal.rentabilidadeMensal = parseFloat(portfolioMatch[1].replace(/\s/g, '').replace(',', '.'));
+      dbg('📈 Rentabilidade mensal (fallback do Portfólio): ' + dadosCarteiraGlobal.rentabilidadeMensal + '%');
     }
   }
   
   dbg('\n=== RESUMO DOS DADOS EXTRAÍDOS ===');
   dbg('Data: ' + dadosCarteiraGlobal.dataReferencia);
-  dbg('Rentabilidade Mensal: ' + dadosCarteiraGlobal.rentabilidadeMensal + '%');
-  dbg('%CDI: ' + dadosCarteiraGlobal.pctCdi + '%');
+  dbg('Rentabilidade Mensal: ' + (dadosCarteiraGlobal.rentabilidadeMensal !== null ? dadosCarteiraGlobal.rentabilidadeMensal + '%' : 'não encontrada'));
+  dbg('%CDI: ' + (dadosCarteiraGlobal.pctCdi !== null ? dadosCarteiraGlobal.pctCdi + '%' : 'não encontrado'));
   dbg('Patrimônio: R$ ' + dadosCarteiraGlobal.patrimonio);
   dbg('Alocações: ' + JSON.stringify(dadosCarteiraGlobal.alocacoes));
   dbg('Retornos: ' + JSON.stringify(dadosCarteiraGlobal.retornos));
