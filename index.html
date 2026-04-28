@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rebalanceador de Carteira · PBF (11 Classes + Relatório Dinâmico)</title>
+<title>PBF · Rebalanceador + Relatório Mensal</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Atkinson+Hyperlegible:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
@@ -23,7 +23,7 @@
   --alvo-bar-bg: #1c2333; --resumo-item-bg: #1c2333;
   --debug-bg: #1c2333; --overlay-bg: rgba(14,17,23,.88);
   --footer-border: rgba(255,255,255,0.07);
-  --relatorio-bg: linear-gradient(135deg, rgba(245,200,66,0.05) 0%, rgba(52,152,219,0.05) 100%);
+  --relatorio-bg: linear-gradient(135deg, rgba(245,200,66,0.03) 0%, rgba(52,152,219,0.03) 100%);
 }
 body.light {
   --bg: #f5f7fa; --bg2: #ffffff; --bg3: #f0f2f5;
@@ -39,7 +39,7 @@ body.light {
   --alvo-bar-bg: #e2e8f0; --resumo-item-bg: #f7fafc;
   --debug-bg: #f7fafc; --overlay-bg: rgba(255,255,255,.95);
   --footer-border: rgba(0,0,0,0.08);
-  --relatorio-bg: linear-gradient(135deg, rgba(245,200,66,0.08) 0%, rgba(52,152,219,0.08) 100%);
+  --relatorio-bg: linear-gradient(135deg, rgba(245,200,66,0.05) 0%, rgba(52,152,219,0.05) 100%);
 }
 * { box-sizing: border-box; margin: 0; padding: 0; transition: all 0.2s ease; }
 
@@ -54,11 +54,7 @@ body {
 .patrim-tag, .header-date, .total-bar span:last-child, .debug-box {
   font-family: 'Atkinson Hyperlegible', 'DM Mono', monospace;
   font-weight: 600;
-  letter-spacing: 0.5px;
-}
-
-.rec-valor, .resumo-val {
-  font-size: 1.1em;
+  letter-spacing: 0.3px;
 }
 
 .header { background: var(--header-bg); border-bottom: 1px solid var(--header-border); padding: 0 2rem; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
@@ -164,69 +160,52 @@ body {
   outline-offset: 2px;
 }
 
-/* Estilos do Relatório */
+/* Estilos do Relatório - Estilo PBF */
 .relatorio-container {
   background: var(--relatorio-bg);
   border-radius: 12px;
   padding: 1.5rem;
 }
-.relatorio-secao {
-  margin-bottom: 1.5rem;
-}
-.relatorio-secao h4 {
-  font-size: 14px;
-  font-weight: 600;
+.relatorio-saudacao {
+  font-size: 15px;
+  margin-bottom: 1.25rem;
   color: var(--gold);
-  margin-bottom: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  font-weight: 500;
 }
-.relatorio-texto {
+.relatorio-paragrafo {
   font-size: 14px;
   line-height: 1.6;
+  margin-bottom: 1rem;
   color: var(--text);
 }
-.relatorio-destaque {
-  background: var(--green-bg);
-  border-left: 3px solid var(--green);
-  padding: 1rem;
-  border-radius: 8px;
-  margin: 1rem 0;
-}
-.relatorio-detrator {
-  background: var(--red-bg);
-  border-left: 3px solid var(--red);
-  padding: 1rem;
-  border-radius: 8px;
-  margin: 1rem 0;
-}
-.relatorio-tabela {
+.relatorio-dados {
   background: var(--bg3);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 1rem;
-  margin-top: 1rem;
+  margin: 1rem 0;
+  border-left: 3px solid var(--gold);
 }
-.relatorio-tabela table {
-  width: 100%;
-  font-size: 13px;
-  border-collapse: collapse;
+.relatorio-dados p {
+  margin: 0.5rem 0;
+  font-size: 14px;
 }
-.relatorio-tabela th, .relatorio-tabela td {
-  padding: 8px;
-  text-align: left;
-  border-bottom: 1px solid var(--border);
-}
-.relatorio-tabela th {
+.relatorio-dados strong {
   color: var(--gold);
-  font-weight: 600;
 }
-.relatorio-tabela td:last-child {
-  text-align: right;
-  font-family: 'Atkinson Hyperlegible', monospace;
-  font-weight: 600;
+.relatorio-classe-item {
+  margin: 0.25rem 0;
+  font-size: 14px;
 }
-.positivo { color: var(--green); }
-.negativo { color: var(--red); }
+.relatorio-positivo { color: var(--green); }
+.relatorio-negativo { color: var(--red); }
+.relatorio-assinatura {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text3);
+  font-style: italic;
+}
 </style>
 </head>
 <body>
@@ -236,7 +215,7 @@ body {
 <header class="header">
   <div class="header-logo">
     <div class="dot">PBF</div>
-    Rebalanceador de Carteira · 11 Classes
+    Rebalanceador + Relatório Mensal
   </div>
   <div class="header-right">
     <div class="header-date" id="hDate"></div>
@@ -270,16 +249,13 @@ body {
     </div>
   </div>
 
-  <!-- Abas -->
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="tab-rebalanceamento">⚖️ Rebalanceamento</button>
-    <button class="tab-btn" data-tab="tab-relatorio">📊 Relatório do Mês</button>
+    <button class="tab-btn" data-tab="tab-relatorio">📊 Relatório Mensal</button>
   </div>
 
-  <!-- Conteúdo Rebalanceamento -->
   <div id="tab-rebalanceamento" class="tab-content active">
     <div class="perfis-row" id="perfisRow"></div>
-
     <div class="grid2">
       <div class="card">
         <div class="card-title">Alocação atual</div>
@@ -292,7 +268,6 @@ body {
         <button class="btn btn-full" id="btnAnalisar">Analisar rebalanceamento</button>
       </div>
     </div>
-
     <div id="resultArea" class="card fade-in" style="display:none">
       <div class="card-title">Recomendações de rebalanceamento</div>
       <div id="listaRec"></div>
@@ -305,10 +280,9 @@ body {
     </div>
   </div>
 
-  <!-- Conteúdo Relatório do Mês -->
   <div id="tab-relatorio" class="tab-content">
     <div class="card">
-      <div class="card-title">📈 Relatório de Performance - Análise Inteligente</div>
+      <div class="card-title">📈 Relatório Mensal - Análise PBF</div>
       <div id="relatorioConteudo" class="relatorio-container">
         <div style="text-align: center; padding: 2rem; color: var(--text3);">
           ⚡ Importe um PDF para gerar o relatório automático
@@ -323,7 +297,6 @@ body {
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ========== PERFIS ==========
 const PERFIS = {
   Conservador: { "Renda Fixa Pós": 85, "Renda Fixa Pré": 15, "Renda Fixa Inflação": 0, "Multiestratégia": 0, "Renda Variável": 0, "Renda Fixa Global": 0, "Renda Variável Global": 0, "Alternativo": 0 },
   Moderado: { "Renda Fixa Pós": 54, "Renda Fixa Pré": 13, "Renda Fixa Inflação": 20, "Multiestratégia": 5, "Renda Variável": 4, "Renda Fixa Global": 0, "Renda Variável Global": 4, "Alternativo": 0 },
@@ -337,12 +310,19 @@ let perfilAtivo = "Moderado";
 let inputsMap = {};
 let patrimonioTotal = 0;
 let debugContent = [];
-let dadosPerformance = {};
-let dadosMercado = null;
-let dataReferencia = "";
+let dadosCarteira = {
+  alocacoes: {},
+  retornos: {},
+  totalCarteira: null,
+  dataReferencia: "",
+  cdi: null,
+  rentabilidadeTotal: null,
+  patrimonio: 0
+};
 
 function fmtPct(v) { return v.toFixed(2).replace('.', ',') + ' %'; }
-function fmtPctSimples(v) { if (v === undefined || v === null) return '0,00%'; return v.toFixed(2).replace('.', ',') + '%'; }
+function fmtPctSimples(v) { if (v === undefined || v === null) return '0,00'; return v.toFixed(2).replace('.', ','); }
+function fmtPctRelatorio(v) { if (v === undefined || v === null) return '0,00%'; return v.toFixed(2).replace('.', ',') + '%'; }
 function fmtBRL(v) { return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits: 2}); }
 function setStatus(msg, tipo) { const el = document.getElementById('status'); el.innerHTML = msg; el.className = 'status show status-' + tipo; setTimeout(() => el.classList.remove('show'), 4000); }
 function dbg(txt) { debugContent.push(txt); document.getElementById('debugBox').textContent = debugContent.join('\n'); }
@@ -355,135 +335,94 @@ function atualizarTotal() {
   document.getElementById('totalBar').className = 'total-bar ' + (Math.abs(t - 100) < 1 ? 'total-ok' : 'total-err');
 }
 
-// Dados REAIS de Março 2026 baseados nas pesquisas [citation:1][citation:2][citation:4]
-function obterDadosMercado(mes, ano) {
-  // Baseado em fontes confiáveis para Março 2026
-  const dados = {
-    mes: mes,
-    ano: ano,
-    textNacional: `Em ${mes} de ${ano}, o mercado brasileiro foi severamente impactado pela escalada do conflito no Oriente Médio, que elevou os preços do petróleo e reacendeu temores inflacionários globais. O Ibovespa registrou queda significativa, refletindo o aversão a risco global, enquanto o dólar se valorizou ante o real. A curva de juros futuros subiu, com o mercado ajustando expectativas para uma Selic mais alta por mais tempo devido ao choque de oferta externo.`,
-    textGlobal: `No cenário internacional, ${mes} foi marcado pela eclosão de um conflito envolvendo Irã, resultando em forte volatilidade nos mercados. O S&P 500 registrou seu pior mês desde setembro de 2022, com queda de aproximadamente 5% [citation:5]. Os preços do petróleo dispararam: WTI ultrapassou US$ 100/barril, acumulando alta superior a 50% no mês [citation:5][citation:7]. O ouro, tradicional porto seguro, caiu cerca de 11% com a realização de lucros [citation:4][citation:7], e as yields dos treasuries subiram com o reprecificação dos juros.`,
-    indicadores: {
-      sp500: "-4,98%",
-      petroleoWTI: "+51,56%",
-      ouro: "-11,52%",
-      dolar: "+1,47%",
-      cdi: "1,21%",
-      imab: "Variação conforme mercado"
-    }
-  };
-  return dados;
-}
-
-function extrairRetornos(texto) {
-  const retornos = {};
+function gerarRelatorioPBF() {
+  const aloc = dadosCarteira.alocacoes;
+  const ret = dadosCarteira.retornos;
+  const data = dadosCarteira.dataReferencia || "mês de referência";
+  const totalRetorno = dadosCarteira.totalCarteira;
+  const cdi = dadosCarteira.cdi;
+  const patrimonio = dadosCarteira.patrimonio;
   
-  // Busca a data de referência no PDF
-  const dataMatch = texto.match(/Data de Referência\s*(\d{2}\/\d{2}\/\d{4})/i);
-  if (dataMatch) {
-    dataReferencia = dataMatch[1];
-    dbg(`📅 Data de referência encontrada: ${dataReferencia}`);
-    const partes = dataReferencia.split('/');
-    const mes = parseInt(partes[1]);
-    const ano = partes[2];
-    const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-    dadosMercado = obterDadosMercado(meses[mes-1], ano);
-  } else {
-    // Fallback - mês atual
-    const hoje = new Date();
-    const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-    dadosMercado = obterDadosMercado(meses[hoje.getMonth()], hoje.getFullYear());
+  // Calcular %CDI
+  let pctCdi = "";
+  if (totalRetorno !== null && totalRetorno !== undefined && cdi !== null && cdi !== undefined && cdi !== 0) {
+    pctCdi = ` (${((totalRetorno / cdi) * 100).toFixed(2)}% do CDI)`;
   }
   
-  // Mapeamento para extrair retornos - VERSÃO CORRIGIDA para "In fl ação"
-  const busca = {
-    "Renda Fixa Pós": /P[óo]s\s*Fixado\s*\d{1,3}\.\d{3},\d{2}[^0-9]*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i,
-    "Renda Fixa Pré": /Pr[ée]\s*Fixado\s*\d{1,3}\.\d{3},\d{2}[^0-9]*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i,
-    "Renda Fixa Inflação": /In\s*fl\s*a[cç][aã]o\s*\d{1,3}\.\d{3},\d{2}[^0-9]*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i,
-    "Multiestratégia": /Multimercado\s*\d{1,3}\.\d{3},\d{2}[^0-9]*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i,
-    "Renda Variável": /Renda\s*Vari[áa]vel\s*Brasil\s*\d{1,3}\.\d{3},\d{2}[^0-9]*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i,
-    "Renda Variável Global": /Renda\s*Vari[áa]vel\s*Global\s*\d{1,3}\.\d{3},\d{2}[^0-9]*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i,
-    "Alternativo": /Alternativo\s*\d{1,3}\.\d{3},\d{2}[^0-9]*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i,
-    "Fundos Listados": /Fundos\s*Listados\s*\d{1,3}\.\d{3},\d{2}[^0-9]*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i
-  };
-  
-  for (const [classe, regex] of Object.entries(busca)) {
-    const match = texto.match(regex);
-    if (match) {
-      let valor = match[1].replace(/\s/g, '').replace(',', '.');
-      retornos[classe] = parseFloat(valor);
-      dbg(`📈 ${classe}: ${match[1]}%`);
-    } else {
-      dbg(`❌ ${classe}: não encontrado`);
+  // Identificar classes com alocação e retorno
+  const classesComDados = [];
+  for (const [nome, aloc] of Object.entries(aloc)) {
+    if (aloc && aloc > 0) {
+      classesComDados.push({
+        nome: nome,
+        alocacao: aloc,
+        retorno: ret[nome] !== undefined ? ret[nome] : null
+      });
     }
   }
+  classesComDados.sort((a,b) => b.alocacao - a.alocacao);
   
-  // Total do portfólio
-  const totalMatch = texto.match(/Portf[oó]lio\s*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i);
-  if (totalMatch) {
-    let valor = totalMatch[1].replace(/\s/g, '').replace(',', '.');
-    retornos.total = parseFloat(valor);
-    dbg(`📈 Total da Carteira: ${totalMatch[1]}%`);
-  }
+  // Separar positivos e negativos
+  const positivos = classesComDados.filter(c => c.retorno !== null && c.retorno > 0);
+  const negativos = classesComDados.filter(c => c.retorno !== null && c.retorno < 0);
+  const destaquePositivo = positivos.length > 0 ? positivos[0] : null;
   
-  return retornos;
-}
-
-function gerarRelatorioHtml() {
-  if (Object.keys(dadosPerformance).length === 0) {
-    return `<div style="text-align: center; padding: 2rem; color: var(--text3);">⚡ Nenhum dado de performance encontrado. Importe um PDF primeiro.</div>`;
-  }
-  
-  const resultados = [];
-  for (const [classe, retorno] of Object.entries(dadosPerformance)) {
-    if (classe !== 'total' && retorno !== null && retorno !== undefined && !isNaN(retorno)) {
-      resultados.push({ classe, retorno });
-    }
-  }
-  resultados.sort((a, b) => b.retorno - a.retorno);
-  
-  const destaque = resultados[0];
-  const detratores = resultados.filter(r => r.retorno < 0);
-  const positivos = resultados.filter(r => r.retorno >= 0);
-  
+  // Construir o texto do relatório
   let html = `
-    <div class="relatorio-secao">
-      <h4>🌎 Mercado Nacional</h4>
-      <div class="relatorio-texto">
-        ${dadosMercado ? dadosMercado.textNacional : 'Dados de mercado não disponíveis para o período.'}
-      </div>
+    <div class="relatorio-saudacao">
+      📋 Prezado cliente, tudo bem? Segue o seu relatório mensal.
     </div>
     
-    <div class="relatorio-secao">
-      <h4>🌍 Mercado Global</h4>
-      <div class="relatorio-texto">
-        ${dadosMercado ? dadosMercado.textGlobal : 'Dados de mercado não disponíveis para o período.'}
-      </div>
+    <div class="relatorio-paragrafo">
+      O mês de ${data} foi marcado por um ambiente de maior volatilidade nos mercados globais, 
+      com destaque para a escalada dos conflitos no Oriente Médio pressionando os preços do petróleo. 
+      No Brasil, o cenário fiscal permaneceu no centro das atenções, enquanto o Banco Central 
+      seguiu com sua estratégia de controle inflacionário.
     </div>
     
-    <div class="relatorio-secao">
-      <h4>📊 Performance da Carteira</h4>
-      ${destaque ? `<div class="relatorio-destaque"><strong>🏆 Destaque Positivo:</strong> ${destaque.classe} com retorno de <span class="positivo">${fmtPctSimples(destaque.retorno)}</span> no período.</div>` : ''}
-      ${detratores.length > 0 ? `<div class="relatorio-detrator"><strong>⚠️ Detrator(es):</strong> ${detratores.slice(0,2).map(d => `${d.classe} com retorno de <span class="negativo">${fmtPctSimples(d.retorno)}</span>`).join(' e ')} impactaram negativamente o resultado.</div>` : ''}
-      <div class="relatorio-tabela">
-        <table>
-          <thead><tr><th>Classe de Ativo</th><th>Retorno no Período</th></tr></thead>
-          <tbody>
-            ${resultados.map(r => `<tr><td>${r.classe}</td><td class="${r.retorno >= 0 ? 'positivo' : 'negativo'}">${r.retorno >= 0 ? '+' : ''}${fmtPctSimples(r.retorno)}</td></tr>`).join('')}
-            ${dadosPerformance.total !== undefined ? `<tr style="border-top: 2px solid var(--gold);"><td><strong>📈 Total da Carteira</strong></td><td class="${dadosPerformance.total >= 0 ? 'positivo' : 'negativo'}"><strong>${dadosPerformance.total >= 0 ? '+' : ''}${fmtPctSimples(dadosPerformance.total)}</strong></td></tr>` : ''}
-          </tbody>
-        </tr>
-      </div>
+    <div class="relatorio-dados">
+      <p>📊 <strong>Desempenho da sua carteira:</strong></p>
+      <p>Sua carteira atravessou esse ambiente com solidez, apresentando um retorno de <strong class="${totalRetorno >= 0 ? 'relatorio-positivo' : 'relatorio-negativo'}">${fmtPctRelatorio(totalRetorno)}</strong> no mês de ${data}${pctCdi}.</p>
+      ${patrimonio > 0 ? `<p>💰 <strong>Patrimônio atual:</strong> ${fmtBRL(patrimonio)}</p>` : ''}
+    </div>
+  `;
+  
+  // Desempenho por classe
+  if (classesComDados.length > 0) {
+    html += `<div class="relatorio-paragrafo"><strong>📈 Desempenho por estratégia:</strong><br>`;
+    for (const item of classesComDados) {
+      const retornoStr = item.retorno !== null ? fmtPctRelatorio(item.retorno) : "não disponível";
+      const retornoClass = (item.retorno !== null && item.retorno >= 0) ? 'relatorio-positivo' : 'relatorio-negativo';
+      html += `<span class="relatorio-classe-item">• <strong>${item.nome}</strong> (${fmtPctSimples(item.alocacao)}% da carteira): <span class="${retornoClass}">${retornoStr}</span></span><br>`;
+    }
+    html += `</div>`;
+  }
+  
+  // Destaque positivo e negativos
+  if (destaquePositivo) {
+    html += `<div class="relatorio-paragrafo">
+      🌟 <strong>Destaque positivo do mês:</strong> ${destaquePositivo.nome} com retorno de <span class="relatorio-positivo">${fmtPctRelatorio(destaquePositivo.retorno)}</span>.
+    </div>`;
+  }
+  
+  if (negativos.length > 0) {
+    const nomesNegativos = negativos.map(n => n.nome).join(', ');
+    html += `<div class="relatorio-paragrafo">
+      ⚠️ <strong>Detrator(es):</strong> ${nomesNegativos} impactaram negativamente o desempenho no período.
+    </div>`;
+  }
+  
+  // Mensagem final
+  html += `
+    <div class="relatorio-paragrafo">
+      Por fim, reforçamos a importância da disciplina na manutenção da estratégia e nos aportes focando no desenvolvimento da carteira no longo prazo. 
+      Essa postura é fundamental para atravessar diferentes ciclos de mercado, aproveitar oportunidades, reduzir os impactos das oscilações no curto prazo 
+      e manter a carteira alinhada aos seus objetivos financeiros.
     </div>
     
-    <div class="relatorio-secao">
-      <h4>💡 Análise e Recomendações</h4>
-      <div class="relatorio-texto">
-        A carteira apresentou desempenho com ${positivos.length} classe(s) positiva(s) e ${detratores.length} negativa(s). 
-        ${destaque ? `O destaque foi ${destaque.classe.toLowerCase()}, que contribuiu positivamente para o resultado. ` : ''}
-        ${detratores.length > 0 ? `Por outro lado, ${detratores.map(d => d.classe.toLowerCase()).join(' e ')} impactaram negativamente a performance. ` : ''}
-        Recomendamos manter a disciplina na alocação estratégica, considerando o cenário de maior volatilidade e os objetivos de longo prazo do cliente.
-      </div>
+    <div class="relatorio-assinatura">
+      Atenciosamente,<br>
+Equipe PBF Investimentos
     </div>
   `;
   
@@ -504,59 +443,103 @@ async function extrairDadosPDF(file) {
   dbg('=== TRECHO DO PDF ===');
   dbg(textoCompleto.substring(0, 2000));
   
-  // Extrair retornos (inclui data e mercado)
-  dadosPerformance = extrairRetornos(textoCompleto);
+  // Extrair data de referência
+  const dataMatch = textoCompleto.match(/Data de Referência\s*(\d{2}\/\d{2}\/\d{4})/i);
+  if (dataMatch) {
+    const partes = dataMatch[1].split('/');
+    const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    dadosCarteira.dataReferencia = `${meses[parseInt(partes[1])-1]} de ${partes[2]}`;
+    dbg(`📅 Data: ${dadosCarteira.dataReferencia}`);
+  }
   
-  // Buscar seção de estratégias para alocações
+  // Extrair CDI
+  const cdiMatch = textoCompleto.match(/CDI\s*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i);
+  if (cdiMatch) {
+    dadosCarteira.cdi = parseFloat(cdiMatch[1].replace(/\s/g, '').replace(',', '.'));
+    dbg(`📊 CDI: ${dadosCarteira.cdi}%`);
+  }
+  
+  // Extrair rentabilidade total
+  const totalMatch = textoCompleto.match(/Portf[oó]lio\s*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i);
+  if (totalMatch) {
+    dadosCarteira.totalCarteira = parseFloat(totalMatch[1].replace(/\s/g, '').replace(',', '.'));
+    dbg(`📈 Total carteira: ${dadosCarteira.totalCarteira}%`);
+  }
+  
+  // Buscar seção de estratégias
   let secaoAlvo = textoCompleto;
   const idxEstrategias = textoCompleto.indexOf('Estratégias');
   if (idxEstrategias !== -1) {
-    secaoAlvo = textoCompleto.substring(idxEstrategias, idxEstrategias + 3000);
-    dbg('=== SEÇÃO "Estratégias" encontrada ===');
+    secaoAlvo = textoCompleto.substring(idxEstrategias, idxEstrategias + 4000);
+    dbg('=== SEÇÃO Estratégias ===');
   }
   
-  // Função para extrair percentuais de alocação - CORRIGIDA para Inflação
-  function extrairPct(nomeBusca) {
-    // Para Inflação, aceita com espaços
-    let nomeBuscaFormatado = nomeBusca;
+  // Extrair alocações
+  function extrairAlocacao(nomeBusca) {
+    let nomeFormatado = nomeBusca;
     if (nomeBusca === 'Inflação') {
-      nomeBuscaFormatado = 'In\\s*fl\\s*a[cç][aã]o';
+      nomeFormatado = 'In\\s*fl\\s*a[cç][aã]o';
     } else {
-      nomeBuscaFormatado = nomeBusca.replace(/\s+/g, '\\s*');
+      nomeFormatado = nomeBusca.replace(/\s+/g, '\\s*');
     }
-    const regex = new RegExp(nomeBuscaFormatado + '\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{2})\\s*%\\)', 'i');
+    const regex = new RegExp(nomeFormatado + '\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{2})\\s*%\\)', 'i');
     const match = secaoAlvo.match(regex);
     if (match) {
-      const valor = parseFloat(match[1] + '.' + match[2]);
-      dbg(`✅ ${nomeBusca}: ${match[1]},${match[2]}% (alocação)`);
-      return valor;
+      return parseFloat(match[1] + '.' + match[2]);
     }
-    dbg(`❌ ${nomeBusca}: não encontrado`);
     return null;
   }
   
-  const res = {
-    "Renda Fixa Pós": extrairPct('Pós Fixado'),
-    "Renda Fixa Pré": extrairPct('Pré Fixado'),
-    "Renda Fixa Inflação": extrairPct('Inflação'),
-    "Multiestratégia": extrairPct('Multimercado'),
-    "Renda Variável": extrairPct('Renda Variável Brasil'),
-    "Renda Fixa Global": 0,
-    "Renda Variável Global": extrairPct('Renda Variável Global'),
-    "Alternativo": extrairPct('Alternativo'),
-    "Caixa": extrairPct('Caixa'),
-    "Proventos": extrairPct('Proventos'),
-    "Fundos Listados": extrairPct('Fundos Listados')
-  };
-  
-  let patrimonio = 0;
-  const patMatch = textoCompleto.match(/PATRIM[OÔ]NIO\s*TOTAL\s*BRUTO[:\s]*R\$\s*([\d\.]+,\d{2})/i);
-  if (patMatch) {
-    patrimonio = parseFloat(patMatch[1].replace(/\./g, '').replace(',', '.'));
-    dbg(`💰 Patrimônio: R$ ${patrimonio.toLocaleString('pt-BR')}`);
+  // Extrair retornos
+  function extrairRetorno(nomeBusca) {
+    let nomeFormatado = nomeBusca;
+    if (nomeBusca === 'Inflação') {
+      nomeFormatado = 'In\\s*fl\\s*a[cç][aã]o';
+    } else {
+      nomeFormatado = nomeBusca.replace(/\s+/g, '\\s*');
+    }
+    const regex = new RegExp(nomeFormatado + '[^0-9]*([+-]?\\s*\\d{1,3}\\s*,\\s*\\d{2})\\s*%', 'i');
+    const match = secaoAlvo.match(regex);
+    if (match) {
+      return parseFloat(match[1].replace(/\s/g, '').replace(',', '.'));
+    }
+    return null;
   }
   
-  return { res, patrimonio };
+  const classesAloc = {
+    "Renda Fixa Pós": "Pós Fixado",
+    "Renda Fixa Pré": "Pré Fixado",
+    "Renda Fixa Inflação": "Inflação",
+    "Multiestratégia": "Multimercado",
+    "Renda Variável": "Renda Variável Brasil",
+    "Renda Variável Global": "Renda Variável Global",
+    "Alternativo": "Alternativo",
+    "Fundos Listados": "Fundos Listados",
+    "Caixa": "Caixa",
+    "Proventos": "Proventos"
+  };
+  
+  for (const [classe, busca] of Object.entries(classesAloc)) {
+    const aloc = extrairAlocacao(busca);
+    if (aloc !== null) {
+      dadosCarteira.alocacoes[classe] = aloc;
+      dbg(`✅ Alocação ${classe}: ${aloc}%`);
+    }
+    const ret = extrairRetorno(busca);
+    if (ret !== null) {
+      dadosCarteira.retornos[classe] = ret;
+      dbg(`📈 Retorno ${classe}: ${ret}%`);
+    }
+  }
+  
+  // Extrair patrimônio
+  const patMatch = textoCompleto.match(/PATRIM[OÔ]NIO\s*TOTAL\s*BRUTO[:\s]*R\$\s*([\d\.]+,\d{2})/i);
+  if (patMatch) {
+    dadosCarteira.patrimonio = parseFloat(patMatch[1].replace(/\./g, '').replace(',', '.'));
+    dbg(`💰 Patrimônio: R$ ${dadosCarteira.patrimonio.toLocaleString('pt-BR')}`);
+  }
+  
+  return { res: dadosCarteira.alocacoes, patrimonio: dadosCarteira.patrimonio };
 }
 
 function renderInputs() {
@@ -610,7 +593,7 @@ function analisar() {
   
   const html = classesAnalise.map(c => {
     const diff = alvo[c] - atual[c];
-    const valorMovimentar = Math.abs(diff * patrimonioTotal / 100);
+    const valorMovimentar = Math.abs(diff * dadosCarteira.patrimonio / 100);
     let badgeClass, label, valorClass;
     if (Math.abs(diff) < 0.05) { badgeClass = 'b-manter'; label = '✓ Manter'; valorClass = 'manter'; nManter++; }
     else if (diff > 0) { badgeClass = 'b-alocar'; label = `↑ Alocar +${fmtPct(diff)}`; valorClass = 'alocar'; nAlocar++; }
@@ -648,18 +631,19 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
   const file = document.getElementById('filePdf').files[0];
   if (!file) { setStatus('Selecione um arquivo PDF primeiro.', 'err'); return; }
   clearDebug();
+  dadosCarteira = { alocacoes: {}, retornos: {}, totalCarteira: null, dataReferencia: "", cdi: null, patrimonio: 0 };
   document.getElementById('overlay').classList.add('show');
   try {
     const { res, patrimonio } = await extrairDadosPDF(file);
-    patrimonioTotal = patrimonio;
+    dadosCarteira.patrimonio = patrimonio;
     for (const classe of CLASSES) {
       inputsMap[classe].value = (res[classe] !== null && res[classe] > 0) ? res[classe].toFixed(2) : '0';
     }
     atualizarTotal();
-    document.getElementById('relatorioConteudo').innerHTML = gerarRelatorioHtml();
+    document.getElementById('relatorioConteudo').innerHTML = gerarRelatorioPBF();
     setStatus('✅ PDF importado com sucesso! Relatório gerado.', 'ok');
-    if (patrimonioTotal > 0) {
-      document.getElementById('patrimVal').innerHTML = fmtBRL(patrimonioTotal);
+    if (dadosCarteira.patrimonio > 0) {
+      document.getElementById('patrimVal').innerHTML = fmtBRL(dadosCarteira.patrimonio);
       document.getElementById('patrimTag').classList.add('show');
     }
   } catch (e) {
@@ -672,9 +656,7 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
 
 document.getElementById('btnLimpar').addEventListener('click', () => {
   CLASSES.forEach(c => { if (inputsMap[c]) inputsMap[c].value = '0'; });
-  patrimonioTotal = 0;
-  dadosPerformance = {};
-  dadosMercado = null;
+  dadosCarteira = { alocacoes: {}, retornos: {}, totalCarteira: null, dataReferencia: "", cdi: null, patrimonio: 0 };
   atualizarTotal();
   document.getElementById('resultArea').style.display = 'none';
   document.getElementById('status').classList.remove('show');
