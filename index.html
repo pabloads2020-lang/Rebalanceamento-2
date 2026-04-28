@@ -194,6 +194,7 @@ body {
 .relatorio-classe-item {
   margin: 0.25rem 0;
   font-size: 14px;
+  display: block;
 }
 .relatorio-positivo { color: var(--green); }
 .relatorio-negativo { color: var(--red); }
@@ -315,9 +316,9 @@ let dadosCarteiraGlobal = {
   alocacoes: {},
   retornos: {},
   totalCarteira: null,
+  rentabilidadeMensal: null,
+  pctCdi: null,
   dataReferencia: "",
-  cdi: null,
-  rentabilidadeTotal: null,
   patrimonio: 0
 };
 
@@ -337,17 +338,17 @@ function atualizarTotal() {
 }
 
 function gerarRelatorioPBF() {
-  const aloc = dadosCarteiraGlobal.alocacoes;
-  const ret = dadosCarteiraGlobal.retornos;
-  const data = dadosCarteiraGlobal.dataReferencia || "mês de referência";
-  const totalRetorno = dadosCarteiraGlobal.totalCarteira;
-  const cdi = dadosCarteiraGlobal.cdi;
-  const patrimonio = dadosCarteiraGlobal.patrimonio;
+  var aloc = dadosCarteiraGlobal.alocacoes;
+  var ret = dadosCarteiraGlobal.retornos;
+  var data = dadosCarteiraGlobal.dataReferencia || "mês de referência";
+  var rentabilidadeMensal = dadosCarteiraGlobal.rentabilidadeMensal;
+  var pctCdi = dadosCarteiraGlobal.pctCdi;
+  var patrimonio = dadosCarteiraGlobal.patrimonio;
   
-  // Calcular %CDI
-  let pctCdi = "";
-  if (totalRetorno !== null && totalRetorno !== undefined && cdi !== null && cdi !== undefined && cdi !== 0) {
-    pctCdi = ` (${((totalRetorno / cdi) * 100).toFixed(2)}% do CDI)`;
+  // Montar a string do %CDI
+  var textoPctCdi = "";
+  if (rentabilidadeMensal !== null && rentabilidadeMensal !== undefined && pctCdi !== null && pctCdi !== undefined) {
+    textoPctCdi = ` (${pctCdi}% do CDI)`;
   }
   
   // Construir lista de classes com dados
@@ -391,7 +392,7 @@ function gerarRelatorioPBF() {
     
     <div class="relatorio-dados">
       <p>📊 <strong>Desempenho da sua carteira:</strong></p>
-      <p>Sua carteira atravessou esse ambiente com solidez, apresentando um retorno de <strong class="${totalRetorno >= 0 ? 'relatorio-positivo' : 'relatorio-negativo'}">${fmtPctRelatorio(totalRetorno)}</strong> no mês de ${data}${pctCdi}.</p>
+      <p>Sua carteira atravessou esse ambiente com solidez, apresentando um retorno de <strong class="${rentabilidadeMensal >= 0 ? 'relatorio-positivo' : 'relatorio-negativo'}">${fmtPctRelatorio(rentabilidadeMensal)}</strong> no mês de ${data}${textoPctCdi}.</p>
       ${patrimonio > 0 ? `<p>💰 <strong>Patrimônio atual:</strong> ${fmtBRL(patrimonio)}</p>` : ''}
     </div>
   `;
@@ -403,7 +404,7 @@ function gerarRelatorioPBF() {
       var item = classesComDados[j];
       var retornoStr = item.retorno !== null ? fmtPctRelatorio(item.retorno) : "não disponível";
       var retornoClass = (item.retorno !== null && item.retorno >= 0) ? 'relatorio-positivo' : 'relatorio-negativo';
-      html += `<span class="relatorio-classe-item">• <strong>${item.nome}</strong> (${fmtPctSimples(item.alocacao)}% da carteira): <span class="${retornoClass}">${retornoStr}</span></span><br>`;
+      html += `<span class="relatorio-classe-item">• <strong>${item.nome}</strong> (${fmtPctSimples(item.alocacao)}% da carteira): <span class="${retornoClass}">${retornoStr}</span></span>`;
     }
     html += `</div>`;
   }
@@ -444,85 +445,120 @@ function gerarRelatorioPBF() {
 }
 
 async function extrairDadosPDF(file) {
-  const ab = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: ab }).promise;
-  let textoCompleto = '';
+  var ab = await file.arrayBuffer();
+  var pdf = await pdfjsLib.getDocument({ data: ab }).promise;
+  var textoCompleto = '';
   
-  for (let p = 1; p <= pdf.numPages; p++) {
-    const page = await pdf.getPage(p);
-    const tc = await page.getTextContent();
-    textoCompleto += tc.items.map(item => item.str).join(' ') + ' ';
+  for (var p = 1; p <= pdf.numPages; p++) {
+    var page = await pdf.getPage(p);
+    var tc = await page.getTextContent();
+    textoCompleto += tc.items.map(function(item) { return item.str; }).join(' ') + ' ';
   }
   
-  dbg('=== TRECHO DO PDF ===');
-  dbg(textoCompleto.substring(0, 2000));
+  dbg('=== TRECHO DO PDF (primeiros 3000 caracteres) ===');
+  dbg(textoCompleto.substring(0, 3000));
   
-  // Extrair data de referência
-  const dataMatch = textoCompleto.match(/Data de Referência\s*(\d{2}\/\d{2}\/\d{4})/i);
+  // ========== 1. EXTRAIR DATA DE REFERÊNCIA ==========
+  var dataMatch = textoCompleto.match(/Data de Referência\s*(\d{2}\/\d{2}\/\d{4})/i);
   if (dataMatch) {
-    const partes = dataMatch[1].split('/');
-    const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-    dadosCarteiraGlobal.dataReferencia = `${meses[parseInt(partes[1])-1]} de ${partes[2]}`;
-    dbg(`📅 Data: ${dadosCarteiraGlobal.dataReferencia}`);
+    var partes = dataMatch[1].split('/');
+    var meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+    dadosCarteiraGlobal.dataReferencia = meses[parseInt(partes[1])-1] + ' de ' + partes[2];
+    dbg('📅 Data: ' + dadosCarteiraGlobal.dataReferencia);
   }
   
-  // Extrair CDI - Página 5
-  const cdiMatch = textoCompleto.match(/CDI\s*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i);
-  if (cdiMatch) {
-    dadosCarteiraGlobal.cdi = parseFloat(cdiMatch[1].replace(/\s/g, '').replace(',', '.'));
-    dbg(`📊 CDI: ${dadosCarteiraGlobal.cdi}%`);
+  // ========== 2. EXTRAIR %CDI DO MÊS (Página 2 - RESUMO DE INFORMAÇÕES) ==========
+  // Procura pela tabela RESUMO DE INFORMAÇÕES DA CARTEIRA
+  var resumoIndex = textoCompleto.indexOf('RESUMO DE INFORMAÇÕES DA CARTEIRA');
+  if (resumoIndex !== -1) {
+    var trechoResumo = textoCompleto.substring(resumoIndex, resumoIndex + 800);
+    dbg('=== Trecho do RESUMO ===');
+    dbg(trechoResumo.substring(0, 500));
+    
+    // Procura pela linha do MÊS e captura o %CDI (quarto campo após MÊS)
+    // Formato: MÊS R$ 253,50 0,77% 63,28% R$ 0,00
+    var mesMatch = trechoResumo.match(/M[ÊE]S\s+R\$\s+[\d\.]+,\d{2}\s+([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%\s+([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i);
+    if (mesMatch) {
+      var pctCdiValor = mesMatch[2].replace(/\s/g, '').replace(',', '.');
+      dadosCarteiraGlobal.pctCdi = parseFloat(pctCdiValor);
+      dbg('📊 %CDI do MÊS: ' + dadosCarteiraGlobal.pctCdi + '%');
+      
+      // A rentabilidade mensal é o primeiro percentual (antes do %CDI)
+      var rentabilidadeValor = mesMatch[1].replace(/\s/g, '').replace(',', '.');
+      dadosCarteiraGlobal.rentabilidadeMensal = parseFloat(rentabilidadeValor);
+      dbg('📈 Rentabilidade do MÊS: ' + dadosCarteiraGlobal.rentabilidadeMensal + '%');
+    } else {
+      // Tentativa alternativa
+      var mesMatchAlt = trechoResumo.match(/M[ÊE]S[^\d]*(\d{1,3},\d{2})%\s*(\d{1,3},\d{2})%/i);
+      if (mesMatchAlt) {
+        var pctCdiValor = mesMatchAlt[2].replace(',', '.');
+        dadosCarteiraGlobal.pctCdi = parseFloat(pctCdiValor);
+        dbg('📊 %CDI do MÊS (alt): ' + dadosCarteiraGlobal.pctCdi + '%');
+        
+        var rentabilidadeValor = mesMatchAlt[1].replace(',', '.');
+        dadosCarteiraGlobal.rentabilidadeMensal = parseFloat(rentabilidadeValor);
+        dbg('📈 Rentabilidade do MÊS (alt): ' + dadosCarteiraGlobal.rentabilidadeMensal + '%');
+      }
+    }
   }
   
-  // Extrair rentabilidade total da carteira (Portfólio) - Página 5
-  const totalMatch = textoCompleto.match(/Portf[oó]lio\s*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i);
-  if (totalMatch) {
-    dadosCarteiraGlobal.totalCarteira = parseFloat(totalMatch[1].replace(/\s/g, '').replace(',', '.'));
-    dbg(`📈 Total carteira: ${dadosCarteiraGlobal.totalCarteira}%`);
+  // ========== 3. EXTRAIR ALOÇAÇÕES E RETORNOS (Página 5 - COMPOSIÇÃO) ==========
+  var composicaoIndex = textoCompleto.indexOf('COMPOSIÇÃO');
+  var estrategiasIndex = textoCompleto.indexOf('Estratégias');
+  var secaoAlvo = textoCompleto;
+  
+  if (estrategiasIndex !== -1) {
+    secaoAlvo = textoCompleto.substring(estrategiasIndex, estrategiasIndex + 4000);
+    dbg('=== SEÇÃO Estratégias/COMPOSIÇÃO ===');
+    dbg(secaoAlvo.substring(0, 1500));
+  } else if (composicaoIndex !== -1) {
+    secaoAlvo = textoCompleto.substring(composicaoIndex, composicaoIndex + 4000);
+    dbg('=== SEÇÃO COMPOSIÇÃO ===');
   }
   
-  // Buscar seção de estratégias (páginas 5-6)
-  let secaoAlvo = textoCompleto;
-  const idxEstrategias = textoCompleto.indexOf('Estratégias');
-  if (idxEstrategias !== -1) {
-    secaoAlvo = textoCompleto.substring(idxEstrategias, idxEstrategias + 4000);
-    dbg('=== SEÇÃO Estratégias ===');
-  }
-  
-  // Função para extrair alocação
+  // Função para extrair alocação (valor entre parênteses)
   function extrairAlocacao(nomeBusca) {
-    let nomeFormatado = nomeBusca;
+    var nomeFormatado = nomeBusca;
     if (nomeBusca === 'Inflação') {
       nomeFormatado = 'In\\s*fl\\s*a[cç][aã]o';
+    } else if (nomeBusca === 'Pós Fixado') {
+      nomeFormatado = 'P[óo]s\\s*Fixado';
+    } else if (nomeBusca === 'Pré Fixado') {
+      nomeFormatado = 'Pr[ée]\\s*Fixado';
     } else {
       nomeFormatado = nomeBusca.replace(/\s+/g, '\\s*');
     }
-    const regex = new RegExp(nomeFormatado + '\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{2})\\s*%\\)', 'i');
-    const match = secaoAlvo.match(regex);
+    var regex = new RegExp(nomeFormatado + '\\s*\\(\\s*(\\d{1,3})\\s*,\\s*(\\d{2})\\s*%\\)', 'i');
+    var match = secaoAlvo.match(regex);
     if (match) {
       return parseFloat(match[1] + '.' + match[2]);
     }
     return null;
   }
   
-  // Função para extrair retorno mensal (Mês Atual)
+  // Função para extrair retorno mensal (primeiro número após R$ e antes do %)
   function extrairRetornoMensal(nomeBusca) {
-    let nomeFormatado = nomeBusca;
+    var nomeFormatado = nomeBusca;
     if (nomeBusca === 'Inflação') {
       nomeFormatado = 'In\\s*fl\\s*a[cç][aã]o';
+    } else if (nomeBusca === 'Pós Fixado') {
+      nomeFormatado = 'P[óo]s\\s*Fixado';
+    } else if (nomeBusca === 'Pré Fixado') {
+      nomeFormatado = 'Pr[ée]\\s*Fixado';
     } else {
       nomeFormatado = nomeBusca.replace(/\s+/g, '\\s*');
     }
-    // Busca o retorno do Mês Atual (primeiro número após o nome)
-    const regex = new RegExp(nomeFormatado + '[^0-9]*([+-]?\\s*\\d{1,3}\\s*,\\s*\\d{2})\\s*%', 'i');
-    const match = secaoAlvo.match(regex);
+    // Padrão: Nome, depois Saldo Bruto (R$ X.XXX,XX), depois o retorno do Mês Atual
+    var regex = new RegExp(nomeFormatado + '[^R]*R\\$\\s+[\\d\\.]+,\\d{2}\\s+([+-]?\\s*\\d{1,3}\\s*,\\s*\\d{2})\\s*%', 'i');
+    var match = secaoAlvo.match(regex);
     if (match) {
       return parseFloat(match[1].replace(/\s/g, '').replace(',', '.'));
     }
     return null;
   }
   
-  // Mapeamento dos nomes no PDF para os nomes do sistema
-  const mapaAlocacao = {
+  // Mapeamento dos nomes
+  var mapaAlocacao = {
     "Renda Fixa Pós": "Pós Fixado",
     "Renda Fixa Pré": "Pré Fixado",
     "Renda Fixa Inflação": "Inflação",
@@ -536,37 +572,55 @@ async function extrairDadosPDF(file) {
   };
   
   // Extrair alocações e retornos
-  for (const [classeSistema, nomePdf] of Object.entries(mapaAlocacao)) {
-    const aloc = extrairAlocacao(nomePdf);
+  for (var classeSistema in mapaAlocacao) {
+    var nomePdf = mapaAlocacao[classeSistema];
+    var aloc = extrairAlocacao(nomePdf);
     if (aloc !== null) {
       dadosCarteiraGlobal.alocacoes[classeSistema] = aloc;
-      dbg(`✅ Alocação ${classeSistema}: ${aloc}%`);
+      dbg('✅ Alocação ' + classeSistema + ': ' + aloc + '%');
     }
     
-    const ret = extrairRetornoMensal(nomePdf);
+    var ret = extrairRetornoMensal(nomePdf);
     if (ret !== null) {
       dadosCarteiraGlobal.retornos[classeSistema] = ret;
-      dbg(`📈 Retorno ${classeSistema}: ${ret}%`);
+      dbg('📈 Retorno Mensal ' + classeSistema + ': ' + ret + '%');
     }
   }
   
-  // Extrair patrimônio
-  const patMatch = textoCompleto.match(/PATRIM[OÔ]NIO\s*TOTAL\s*BRUTO[:\s]*R\$\s*([\d\.]+,\d{2})/i);
+  // ========== 4. EXTRAIR PATRIMÔNIO TOTAL ==========
+  var patMatch = textoCompleto.match(/PATRIM[OÔ]NIO\s*TOTAL\s*BRUTO[:\s]*R\$\s*([\d\.]+,\d{2})/i);
   if (patMatch) {
     dadosCarteiraGlobal.patrimonio = parseFloat(patMatch[1].replace(/\./g, '').replace(',', '.'));
-    dbg(`💰 Patrimônio: R$ ${dadosCarteiraGlobal.patrimonio.toLocaleString('pt-BR')}`);
+    dbg('💰 Patrimônio: R$ ' + dadosCarteiraGlobal.patrimonio.toLocaleString('pt-BR'));
   }
+  
+  // Se não conseguiu extrair a rentabilidade mensal pelo resumo, tenta pelo total da carteira
+  if (dadosCarteiraGlobal.rentabilidadeMensal === null) {
+    var totalMatch = textoCompleto.match(/Portf[oó]lio\s*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i);
+    if (totalMatch) {
+      dadosCarteiraGlobal.rentabilidadeMensal = parseFloat(totalMatch[1].replace(/\s/g, '').replace(',', '.'));
+      dbg('📈 Total carteira (fallback): ' + dadosCarteiraGlobal.rentabilidadeMensal + '%');
+    }
+  }
+  
+  dbg('\n=== RESUMO DOS DADOS EXTRAÍDOS ===');
+  dbg('Data: ' + dadosCarteiraGlobal.dataReferencia);
+  dbg('Rentabilidade Mensal: ' + dadosCarteiraGlobal.rentabilidadeMensal + '%');
+  dbg('%CDI: ' + dadosCarteiraGlobal.pctCdi + '%');
+  dbg('Patrimônio: R$ ' + dadosCarteiraGlobal.patrimonio);
+  dbg('Alocações: ' + JSON.stringify(dadosCarteiraGlobal.alocacoes));
+  dbg('Retornos: ' + JSON.stringify(dadosCarteiraGlobal.retornos));
   
   return { res: dadosCarteiraGlobal.alocacoes, patrimonio: dadosCarteiraGlobal.patrimonio };
 }
 
 function renderInputs() {
-  const container = document.getElementById('inputsAtual');
+  var container = document.getElementById('inputsAtual');
   container.innerHTML = '';
-  CLASSES.forEach((classe, idx) => {
-    const row = document.createElement('div');
+  CLASSES.forEach(function(classe, idx) {
+    var row = document.createElement('div');
     row.className = 'classe-row';
-    row.innerHTML = `<div class="dot8 ${CORES[idx]}"></div><span class="classe-nome">${classe}</span><input class="classe-input" type="number" step="any" min="0" max="100" value="0" id="inp_${idx}"><span class="pct-label">%</span>`;
+    row.innerHTML = '<div class="dot8 ' + CORES[idx] + '"></div><span class="classe-nome">' + classe + '</span><input class="classe-input" type="number" step="any" min="0" max="100" value="0" id="inp_' + idx + '"><span class="pct-label">%</span>';
     container.appendChild(row);
     inputsMap[classe] = row.querySelector('input');
     inputsMap[classe].addEventListener('input', atualizarTotal);
@@ -575,68 +629,93 @@ function renderInputs() {
 }
 
 function renderAlvo() {
-  const rec = PERFIS[perfilAtivo];
+  var rec = PERFIS[perfilAtivo];
   document.getElementById('perfilLabel').textContent = perfilAtivo;
-  const container = document.getElementById('tabelaAlvo');
-  const classesAlvo = CLASSES.filter(c => c !== 'Caixa' && c !== 'Proventos' && c !== 'Fundos Listados');
-  container.innerHTML = classesAlvo.map(c => `<div class="alvo-row"><div class="dot8 ${CORES[CLASSES.indexOf(c)]}"></div><span class="alvo-nome">${c}</span><div class="alvo-bar-wrap"><div class="alvo-bar-fill" style="width:${rec[c]}%"></div></div><span class="alvo-pct">${rec[c]}%</span></div>`).join('');
+  var container = document.getElementById('tabelaAlvo');
+  var classesAlvo = CLASSES.filter(function(c) { return c !== 'Caixa' && c !== 'Proventos' && c !== 'Fundos Listados'; });
+  var html = '';
+  for (var i = 0; i < classesAlvo.length; i++) {
+    var c = classesAlvo[i];
+    html += '<div class="alvo-row"><div class="dot8 ' + CORES[CLASSES.indexOf(c)] + '"></div><span class="alvo-nome">' + c + '</span><div class="alvo-bar-wrap"><div class="alvo-bar-fill" style="width:' + rec[c] + '%"></div></div><span class="alvo-pct">' + rec[c] + '%</span></div>';
+  }
+  container.innerHTML = html;
 }
 
 function renderPerfis() {
-  const container = document.getElementById('perfisRow');
-  container.innerHTML = Object.keys(PERFIS).map(p => `<button class="perfil-btn ${p === perfilAtivo ? 'ativo' : ''}" data-perfil="${p}">${p}</button>`).join('');
-  container.querySelectorAll('.perfil-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      perfilAtivo = btn.dataset.perfil;
+  var container = document.getElementById('perfisRow');
+  var html = '';
+  var perfis = Object.keys(PERFIS);
+  for (var i = 0; i < perfis.length; i++) {
+    var p = perfis[i];
+    html += '<button class="perfil-btn ' + (p === perfilAtivo ? 'ativo' : '') + '" data-perfil="' + p + '">' + p + '</button>';
+  }
+  container.innerHTML = html;
+  var btns = container.querySelectorAll('.perfil-btn');
+  for (var j = 0; j < btns.length; j++) {
+    btns[j].addEventListener('click', function() {
+      perfilAtivo = this.dataset.perfil;
       renderPerfis();
       renderAlvo();
       document.getElementById('resultArea').style.display = 'none';
     });
-  });
+  }
 }
 
 function analisar() {
-  let total = 0;
-  const atual = {};
-  CLASSES.forEach(c => { atual[c] = parseFloat(inputsMap[c]?.value || 0) || 0; total += atual[c]; });
+  var total = 0;
+  var atual = {};
+  for (var i = 0; i < CLASSES.length; i++) {
+    var c = CLASSES[i];
+    atual[c] = parseFloat(inputsMap[c]?.value || 0) || 0;
+    total += atual[c];
+  }
   
   if (Math.abs(total - 100) > 1) {
-    setStatus(`Total deve ser próximo de 100% (atual: ${fmtPct(total)}). Tolerância de 1%`, 'err');
+    setStatus('Total deve ser próximo de 100% (atual: ' + fmtPct(total) + '). Tolerância de 1%', 'err');
     return;
   }
   
-  const alvo = PERFIS[perfilAtivo];
-  let nManter = 0, nAlocar = 0, nRetirar = 0;
-  const classesAnalise = CLASSES.filter(c => c !== 'Caixa' && c !== 'Proventos' && c !== 'Fundos Listados');
+  var alvo = PERFIS[perfilAtivo];
+  var nManter = 0, nAlocar = 0, nRetirar = 0;
+  var classesAnalise = CLASSES.filter(function(c) { return c !== 'Caixa' && c !== 'Proventos' && c !== 'Fundos Listados'; });
   
-  const html = classesAnalise.map(c => {
-    const diff = alvo[c] - atual[c];
-    const valorMovimentar = Math.abs(diff * dadosCarteiraGlobal.patrimonio / 100);
-    let badgeClass, label, valorClass;
+  var html = '';
+  for (var j = 0; j < classesAnalise.length; j++) {
+    var c = classesAnalise[j];
+    var diff = alvo[c] - atual[c];
+    var valorMovimentar = Math.abs(diff * dadosCarteiraGlobal.patrimonio / 100);
+    var badgeClass, label, valorClass;
     if (Math.abs(diff) < 0.05) { badgeClass = 'b-manter'; label = '✓ Manter'; valorClass = 'manter'; nManter++; }
-    else if (diff > 0) { badgeClass = 'b-alocar'; label = `↑ Alocar +${fmtPct(diff)}`; valorClass = 'alocar'; nAlocar++; }
-    else { badgeClass = 'b-retirar'; label = `↓ Retirar ${fmtPct(Math.abs(diff))}`; valorClass = 'retirar'; nRetirar++; }
-    const valorDisplay = Math.abs(diff) < 0.05 ? 'R$ 0,00' : fmtBRL(valorMovimentar);
-    return `<div class="rec-row"><div class="dot8 ${CORES[CLASSES.indexOf(c)]}"></div><span class="rec-nome">${c}</span><span class="rec-nums">${fmtPct(atual[c])} → ${alvo[c]}%</span><span class="rec-valor ${valorClass}">${valorDisplay}</span><span class="badge ${badgeClass}">${label}</span></div>`;
-  }).join('');
+    else if (diff > 0) { badgeClass = 'b-alocar'; label = '↑ Alocar +' + fmtPct(diff); valorClass = 'alocar'; nAlocar++; }
+    else { badgeClass = 'b-retirar'; label = '↓ Retirar ' + fmtPct(Math.abs(diff)); valorClass = 'retirar'; nRetirar++; }
+    var valorDisplay = Math.abs(diff) < 0.05 ? 'R$ 0,00' : fmtBRL(valorMovimentar);
+    html += '<div class="rec-row"><div class="dot8 ' + CORES[CLASSES.indexOf(c)] + '"></div><span class="rec-nome">' + c + '</span><span class="rec-nums">' + fmtPct(atual[c]) + ' → ' + alvo[c] + '%</span><span class="rec-valor ' + valorClass + '">' + valorDisplay + '</span><span class="badge ' + badgeClass + '">' + label + '</span></div>';
+  }
   
   document.getElementById('listaRec').innerHTML = html;
-  document.getElementById('resumoGrid').innerHTML = `<div class="resumo-item"><div class="resumo-label">Manter</div><div class="resumo-val" style="color:var(--amber)">${nManter}</div></div><div class="resumo-item"><div class="resumo-label">Alocar</div><div class="resumo-val" style="color:var(--green)">${nAlocar}</div></div><div class="resumo-item"><div class="resumo-label">Retirar</div><div class="resumo-val" style="color:var(--red)">${nRetirar}</div></div><div class="resumo-item"><div class="resumo-label">Perfil</div><div class="resumo-val" style="color:var(--gold);font-size:14px">${perfilAtivo}</div></div>`;
+  document.getElementById('resumoGrid').innerHTML = '<div class="resumo-item"><div class="resumo-label">Manter</div><div class="resumo-val" style="color:var(--amber)">' + nManter + '</div></div><div class="resumo-item"><div class="resumo-label">Alocar</div><div class="resumo-val" style="color:var(--green)">' + nAlocar + '</div></div><div class="resumo-item"><div class="resumo-label">Retirar</div><div class="resumo-val" style="color:var(--red)">' + nRetirar + '</div></div><div class="resumo-item"><div class="resumo-label">Perfil</div><div class="resumo-val" style="color:var(--gold);font-size:14px">' + perfilAtivo + '</div></div>';
   document.getElementById('resultArea').style.display = 'block';
 }
 
 // Eventos
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    const tabId = btn.dataset.tab;
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+var tabs = document.querySelectorAll('.tab-btn');
+for (var t = 0; t < tabs.length; t++) {
+  tabs[t].addEventListener('click', function() {
+    var tabId = this.dataset.tab;
+    var allBtns = document.querySelectorAll('.tab-btn');
+    for (var b = 0; b < allBtns.length; b++) {
+      allBtns[b].classList.remove('active');
+    }
+    this.classList.add('active');
+    var allContents = document.querySelectorAll('.tab-content');
+    for (var c = 0; c < allContents.length; c++) {
+      allContents[c].classList.remove('active');
+    }
     document.getElementById(tabId).classList.add('active');
   });
-});
+}
 
-document.getElementById('btnToggleDebug').addEventListener('click', () => {
+document.getElementById('btnToggleDebug').addEventListener('click', function() {
   document.getElementById('debugBox').classList.toggle('show');
   document.getElementById('debugArrow').classList.toggle('rotated');
 });
@@ -645,25 +724,27 @@ document.getElementById('filePdf').addEventListener('change', function() {
   document.getElementById('fileName').textContent = this.files[0]?.name || 'Selecionar arquivo PDF...';
 });
 
-document.getElementById('btnImportar').addEventListener('click', async () => {
-  const file = document.getElementById('filePdf').files[0];
+document.getElementById('btnImportar').addEventListener('click', async function() {
+  var file = document.getElementById('filePdf').files[0];
   if (!file) { setStatus('Selecione um arquivo PDF primeiro.', 'err'); return; }
   clearDebug();
-  // Reset dos dados
   dadosCarteiraGlobal = {
     alocacoes: {},
     retornos: {},
     totalCarteira: null,
+    rentabilidadeMensal: null,
+    pctCdi: null,
     dataReferencia: "",
-    cdi: null,
-    rentabilidadeTotal: null,
     patrimonio: 0
   };
   document.getElementById('overlay').classList.add('show');
   try {
-    const { res, patrimonio } = await extrairDadosPDF(file);
+    var result = await extrairDadosPDF(file);
+    var res = result.res;
+    var patrimonio = result.patrimonio;
     dadosCarteiraGlobal.patrimonio = patrimonio;
-    for (const classe of CLASSES) {
+    for (var i = 0; i < CLASSES.length; i++) {
+      var classe = CLASSES[i];
       inputsMap[classe].value = (res[classe] !== null && res[classe] > 0) ? res[classe].toFixed(2) : '0';
     }
     atualizarTotal();
@@ -681,15 +762,18 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
   }
 });
 
-document.getElementById('btnLimpar').addEventListener('click', () => {
-  CLASSES.forEach(c => { if (inputsMap[c]) inputsMap[c].value = '0'; });
+document.getElementById('btnLimpar').addEventListener('click', function() {
+  for (var i = 0; i < CLASSES.length; i++) {
+    var c = CLASSES[i];
+    if (inputsMap[c]) inputsMap[c].value = '0';
+  }
   dadosCarteiraGlobal = {
     alocacoes: {},
     retornos: {},
     totalCarteira: null,
+    rentabilidadeMensal: null,
+    pctCdi: null,
     dataReferencia: "",
-    cdi: null,
-    rentabilidadeTotal: null,
     patrimonio: 0
   };
   atualizarTotal();
@@ -703,7 +787,7 @@ document.getElementById('btnLimpar').addEventListener('click', () => {
 });
 
 document.getElementById('btnAnalisar').addEventListener('click', analisar);
-document.getElementById('themeToggle').addEventListener('click', () => {
+document.getElementById('themeToggle').addEventListener('click', function() {
   document.body.classList.toggle('light');
   localStorage.setItem('theme', document.body.classList.contains('light') ? 'light' : 'dark');
   document.getElementById('themeToggle').textContent = document.body.classList.contains('light') ? '☀️' : '🌙';
