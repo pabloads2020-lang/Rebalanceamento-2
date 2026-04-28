@@ -16,7 +16,6 @@
   --red: #e74c3c; --red-bg: rgba(231,76,60,0.12);
   --amber: #f39c12; --amber-bg: rgba(243,156,18,0.12);
   --blue: #3498db; --blue-bg: rgba(52,152,219,0.12);
-  --purple: #9b59b6; --purple-bg: rgba(155,89,182,0.12);
   --header-bg: #161b25; --header-border: rgba(255,255,255,0.07);
   --card-bg: #161b25; --card-border: rgba(255,255,255,0.07);
   --input-bg: #1c2333; --input-border: rgba(255,255,255,0.13);
@@ -310,7 +309,9 @@ let perfilAtivo = "Moderado";
 let inputsMap = {};
 let patrimonioTotal = 0;
 let debugContent = [];
-let dadosCarteira = {
+
+// Dados da carteira extraídos do PDF
+let dadosCarteiraGlobal = {
   alocacoes: {},
   retornos: {},
   totalCarteira: null,
@@ -336,12 +337,12 @@ function atualizarTotal() {
 }
 
 function gerarRelatorioPBF() {
-  const aloc = dadosCarteira.alocacoes;
-  const ret = dadosCarteira.retornos;
-  const data = dadosCarteira.dataReferencia || "mês de referência";
-  const totalRetorno = dadosCarteira.totalCarteira;
-  const cdi = dadosCarteira.cdi;
-  const patrimonio = dadosCarteira.patrimonio;
+  const aloc = dadosCarteiraGlobal.alocacoes;
+  const ret = dadosCarteiraGlobal.retornos;
+  const data = dadosCarteiraGlobal.dataReferencia || "mês de referência";
+  const totalRetorno = dadosCarteiraGlobal.totalCarteira;
+  const cdi = dadosCarteiraGlobal.cdi;
+  const patrimonio = dadosCarteiraGlobal.patrimonio;
   
   // Calcular %CDI
   let pctCdi = "";
@@ -349,26 +350,34 @@ function gerarRelatorioPBF() {
     pctCdi = ` (${((totalRetorno / cdi) * 100).toFixed(2)}% do CDI)`;
   }
   
-  // Identificar classes com alocação e retorno
-  const classesComDados = [];
-  for (const [nome, aloc] of Object.entries(aloc)) {
-    if (aloc && aloc > 0) {
+  // Construir lista de classes com dados
+  var classesComDados = [];
+  for (var nome in aloc) {
+    if (aloc.hasOwnProperty(nome) && aloc[nome] !== null && aloc[nome] > 0) {
       classesComDados.push({
         nome: nome,
-        alocacao: aloc,
+        alocacao: aloc[nome],
         retorno: ret[nome] !== undefined ? ret[nome] : null
       });
     }
   }
-  classesComDados.sort((a,b) => b.alocacao - a.alocacao);
+  classesComDados.sort(function(a,b) { return b.alocacao - a.alocacao; });
   
   // Separar positivos e negativos
-  const positivos = classesComDados.filter(c => c.retorno !== null && c.retorno > 0);
-  const negativos = classesComDados.filter(c => c.retorno !== null && c.retorno < 0);
-  const destaquePositivo = positivos.length > 0 ? positivos[0] : null;
+  var positivos = [];
+  var negativos = [];
+  for (var i = 0; i < classesComDados.length; i++) {
+    var item = classesComDados[i];
+    if (item.retorno !== null && item.retorno > 0) {
+      positivos.push(item);
+    } else if (item.retorno !== null && item.retorno < 0) {
+      negativos.push(item);
+    }
+  }
+  var destaquePositivo = positivos.length > 0 ? positivos[0] : null;
   
-  // Construir o texto do relatório
-  let html = `
+  // Construir o HTML do relatório
+  var html = `
     <div class="relatorio-saudacao">
       📋 Prezado cliente, tudo bem? Segue o seu relatório mensal.
     </div>
@@ -390,25 +399,30 @@ function gerarRelatorioPBF() {
   // Desempenho por classe
   if (classesComDados.length > 0) {
     html += `<div class="relatorio-paragrafo"><strong>📈 Desempenho por estratégia:</strong><br>`;
-    for (const item of classesComDados) {
-      const retornoStr = item.retorno !== null ? fmtPctRelatorio(item.retorno) : "não disponível";
-      const retornoClass = (item.retorno !== null && item.retorno >= 0) ? 'relatorio-positivo' : 'relatorio-negativo';
+    for (var j = 0; j < classesComDados.length; j++) {
+      var item = classesComDados[j];
+      var retornoStr = item.retorno !== null ? fmtPctRelatorio(item.retorno) : "não disponível";
+      var retornoClass = (item.retorno !== null && item.retorno >= 0) ? 'relatorio-positivo' : 'relatorio-negativo';
       html += `<span class="relatorio-classe-item">• <strong>${item.nome}</strong> (${fmtPctSimples(item.alocacao)}% da carteira): <span class="${retornoClass}">${retornoStr}</span></span><br>`;
     }
     html += `</div>`;
   }
   
-  // Destaque positivo e negativos
+  // Destaque positivo
   if (destaquePositivo) {
     html += `<div class="relatorio-paragrafo">
       🌟 <strong>Destaque positivo do mês:</strong> ${destaquePositivo.nome} com retorno de <span class="relatorio-positivo">${fmtPctRelatorio(destaquePositivo.retorno)}</span>.
     </div>`;
   }
   
+  // Detratores
   if (negativos.length > 0) {
-    const nomesNegativos = negativos.map(n => n.nome).join(', ');
+    var nomesNegativos = [];
+    for (var k = 0; k < negativos.length; k++) {
+      nomesNegativos.push(negativos[k].nome);
+    }
     html += `<div class="relatorio-paragrafo">
-      ⚠️ <strong>Detrator(es):</strong> ${nomesNegativos} impactaram negativamente o desempenho no período.
+      ⚠️ <strong>Detrator(es):</strong> ${nomesNegativos.join(', ')} impactaram negativamente o desempenho no período.
     </div>`;
   }
   
@@ -422,7 +436,7 @@ function gerarRelatorioPBF() {
     
     <div class="relatorio-assinatura">
       Atenciosamente,<br>
-Equipe PBF Investimentos
+      Equipe PBF Investimentos
     </div>
   `;
   
@@ -448,25 +462,25 @@ async function extrairDadosPDF(file) {
   if (dataMatch) {
     const partes = dataMatch[1].split('/');
     const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-    dadosCarteira.dataReferencia = `${meses[parseInt(partes[1])-1]} de ${partes[2]}`;
-    dbg(`📅 Data: ${dadosCarteira.dataReferencia}`);
+    dadosCarteiraGlobal.dataReferencia = `${meses[parseInt(partes[1])-1]} de ${partes[2]}`;
+    dbg(`📅 Data: ${dadosCarteiraGlobal.dataReferencia}`);
   }
   
-  // Extrair CDI
+  // Extrair CDI - Página 5
   const cdiMatch = textoCompleto.match(/CDI\s*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i);
   if (cdiMatch) {
-    dadosCarteira.cdi = parseFloat(cdiMatch[1].replace(/\s/g, '').replace(',', '.'));
-    dbg(`📊 CDI: ${dadosCarteira.cdi}%`);
+    dadosCarteiraGlobal.cdi = parseFloat(cdiMatch[1].replace(/\s/g, '').replace(',', '.'));
+    dbg(`📊 CDI: ${dadosCarteiraGlobal.cdi}%`);
   }
   
-  // Extrair rentabilidade total
+  // Extrair rentabilidade total da carteira (Portfólio) - Página 5
   const totalMatch = textoCompleto.match(/Portf[oó]lio\s*([+-]?\s*\d{1,3}\s*,\s*\d{2})\s*%/i);
   if (totalMatch) {
-    dadosCarteira.totalCarteira = parseFloat(totalMatch[1].replace(/\s/g, '').replace(',', '.'));
-    dbg(`📈 Total carteira: ${dadosCarteira.totalCarteira}%`);
+    dadosCarteiraGlobal.totalCarteira = parseFloat(totalMatch[1].replace(/\s/g, '').replace(',', '.'));
+    dbg(`📈 Total carteira: ${dadosCarteiraGlobal.totalCarteira}%`);
   }
   
-  // Buscar seção de estratégias
+  // Buscar seção de estratégias (páginas 5-6)
   let secaoAlvo = textoCompleto;
   const idxEstrategias = textoCompleto.indexOf('Estratégias');
   if (idxEstrategias !== -1) {
@@ -474,7 +488,7 @@ async function extrairDadosPDF(file) {
     dbg('=== SEÇÃO Estratégias ===');
   }
   
-  // Extrair alocações
+  // Função para extrair alocação
   function extrairAlocacao(nomeBusca) {
     let nomeFormatado = nomeBusca;
     if (nomeBusca === 'Inflação') {
@@ -490,14 +504,15 @@ async function extrairDadosPDF(file) {
     return null;
   }
   
-  // Extrair retornos
-  function extrairRetorno(nomeBusca) {
+  // Função para extrair retorno mensal (Mês Atual)
+  function extrairRetornoMensal(nomeBusca) {
     let nomeFormatado = nomeBusca;
     if (nomeBusca === 'Inflação') {
       nomeFormatado = 'In\\s*fl\\s*a[cç][aã]o';
     } else {
       nomeFormatado = nomeBusca.replace(/\s+/g, '\\s*');
     }
+    // Busca o retorno do Mês Atual (primeiro número após o nome)
     const regex = new RegExp(nomeFormatado + '[^0-9]*([+-]?\\s*\\d{1,3}\\s*,\\s*\\d{2})\\s*%', 'i');
     const match = secaoAlvo.match(regex);
     if (match) {
@@ -506,7 +521,8 @@ async function extrairDadosPDF(file) {
     return null;
   }
   
-  const classesAloc = {
+  // Mapeamento dos nomes no PDF para os nomes do sistema
+  const mapaAlocacao = {
     "Renda Fixa Pós": "Pós Fixado",
     "Renda Fixa Pré": "Pré Fixado",
     "Renda Fixa Inflação": "Inflação",
@@ -519,27 +535,29 @@ async function extrairDadosPDF(file) {
     "Proventos": "Proventos"
   };
   
-  for (const [classe, busca] of Object.entries(classesAloc)) {
-    const aloc = extrairAlocacao(busca);
+  // Extrair alocações e retornos
+  for (const [classeSistema, nomePdf] of Object.entries(mapaAlocacao)) {
+    const aloc = extrairAlocacao(nomePdf);
     if (aloc !== null) {
-      dadosCarteira.alocacoes[classe] = aloc;
-      dbg(`✅ Alocação ${classe}: ${aloc}%`);
+      dadosCarteiraGlobal.alocacoes[classeSistema] = aloc;
+      dbg(`✅ Alocação ${classeSistema}: ${aloc}%`);
     }
-    const ret = extrairRetorno(busca);
+    
+    const ret = extrairRetornoMensal(nomePdf);
     if (ret !== null) {
-      dadosCarteira.retornos[classe] = ret;
-      dbg(`📈 Retorno ${classe}: ${ret}%`);
+      dadosCarteiraGlobal.retornos[classeSistema] = ret;
+      dbg(`📈 Retorno ${classeSistema}: ${ret}%`);
     }
   }
   
   // Extrair patrimônio
   const patMatch = textoCompleto.match(/PATRIM[OÔ]NIO\s*TOTAL\s*BRUTO[:\s]*R\$\s*([\d\.]+,\d{2})/i);
   if (patMatch) {
-    dadosCarteira.patrimonio = parseFloat(patMatch[1].replace(/\./g, '').replace(',', '.'));
-    dbg(`💰 Patrimônio: R$ ${dadosCarteira.patrimonio.toLocaleString('pt-BR')}`);
+    dadosCarteiraGlobal.patrimonio = parseFloat(patMatch[1].replace(/\./g, '').replace(',', '.'));
+    dbg(`💰 Patrimônio: R$ ${dadosCarteiraGlobal.patrimonio.toLocaleString('pt-BR')}`);
   }
   
-  return { res: dadosCarteira.alocacoes, patrimonio: dadosCarteira.patrimonio };
+  return { res: dadosCarteiraGlobal.alocacoes, patrimonio: dadosCarteiraGlobal.patrimonio };
 }
 
 function renderInputs() {
@@ -593,7 +611,7 @@ function analisar() {
   
   const html = classesAnalise.map(c => {
     const diff = alvo[c] - atual[c];
-    const valorMovimentar = Math.abs(diff * dadosCarteira.patrimonio / 100);
+    const valorMovimentar = Math.abs(diff * dadosCarteiraGlobal.patrimonio / 100);
     let badgeClass, label, valorClass;
     if (Math.abs(diff) < 0.05) { badgeClass = 'b-manter'; label = '✓ Manter'; valorClass = 'manter'; nManter++; }
     else if (diff > 0) { badgeClass = 'b-alocar'; label = `↑ Alocar +${fmtPct(diff)}`; valorClass = 'alocar'; nAlocar++; }
@@ -631,19 +649,28 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
   const file = document.getElementById('filePdf').files[0];
   if (!file) { setStatus('Selecione um arquivo PDF primeiro.', 'err'); return; }
   clearDebug();
-  dadosCarteira = { alocacoes: {}, retornos: {}, totalCarteira: null, dataReferencia: "", cdi: null, patrimonio: 0 };
+  // Reset dos dados
+  dadosCarteiraGlobal = {
+    alocacoes: {},
+    retornos: {},
+    totalCarteira: null,
+    dataReferencia: "",
+    cdi: null,
+    rentabilidadeTotal: null,
+    patrimonio: 0
+  };
   document.getElementById('overlay').classList.add('show');
   try {
     const { res, patrimonio } = await extrairDadosPDF(file);
-    dadosCarteira.patrimonio = patrimonio;
+    dadosCarteiraGlobal.patrimonio = patrimonio;
     for (const classe of CLASSES) {
       inputsMap[classe].value = (res[classe] !== null && res[classe] > 0) ? res[classe].toFixed(2) : '0';
     }
     atualizarTotal();
     document.getElementById('relatorioConteudo').innerHTML = gerarRelatorioPBF();
     setStatus('✅ PDF importado com sucesso! Relatório gerado.', 'ok');
-    if (dadosCarteira.patrimonio > 0) {
-      document.getElementById('patrimVal').innerHTML = fmtBRL(dadosCarteira.patrimonio);
+    if (dadosCarteiraGlobal.patrimonio > 0) {
+      document.getElementById('patrimVal').innerHTML = fmtBRL(dadosCarteiraGlobal.patrimonio);
       document.getElementById('patrimTag').classList.add('show');
     }
   } catch (e) {
@@ -656,7 +683,15 @@ document.getElementById('btnImportar').addEventListener('click', async () => {
 
 document.getElementById('btnLimpar').addEventListener('click', () => {
   CLASSES.forEach(c => { if (inputsMap[c]) inputsMap[c].value = '0'; });
-  dadosCarteira = { alocacoes: {}, retornos: {}, totalCarteira: null, dataReferencia: "", cdi: null, patrimonio: 0 };
+  dadosCarteiraGlobal = {
+    alocacoes: {},
+    retornos: {},
+    totalCarteira: null,
+    dataReferencia: "",
+    cdi: null,
+    rentabilidadeTotal: null,
+    patrimonio: 0
+  };
   atualizarTotal();
   document.getElementById('resultArea').style.display = 'none';
   document.getElementById('status').classList.remove('show');
