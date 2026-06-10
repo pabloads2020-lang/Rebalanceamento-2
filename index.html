@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rebalanceador de Carteira · PBF (11 Classes + Fundos Listados)</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Atkinson+Hyperlegible:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0,1" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 :root {
@@ -45,26 +46,183 @@ body {
   background: var(--bg); 
   color: var(--text); 
   min-height: 100vh; 
+  padding-top: 0;
 }
 
+/* ==================== TOPBAR PADRÃO HUB FINANCEIRO ==================== */
+.hub-topbar {
+  --bg-topbar: #141720;
+  --border-topbar: #2a2e3f;
+  --text-topbar: #e1e3ef;
+  --text2-topbar: #9a9eb8;
+  --text3-topbar: #5c6080;
+  --gold-topbar: #f5c842;
+  --amber-topbar: #e0ac2c;
+  font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg-topbar);
+  border-bottom: 1px solid var(--border-topbar);
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1rem;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 200;
+}
+body.light .hub-topbar {
+  --bg-topbar: #ffffff;
+  --border-topbar: #d4d8e2;
+  --text-topbar: #1a1d2e;
+  --text2-topbar: #4a4f6a;
+  --text3-topbar: #8a90a8;
+  --gold-topbar: #b8860b;
+  --amber-topbar: #c47d00;
+}
+.hub-topbar-left, .hub-topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.hub-topbar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.hub-pbf-badge {
+  background: var(--gold-topbar);
+  padding: 0 12px;
+  height: 30px;
+  border-radius: 40px;
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  color: #000;
+  letter-spacing: 0.5px;
+}
+.hub-topbar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-topbar);
+  white-space: nowrap;
+}
+.hub-back-btn, .hub-newtab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid var(--border-topbar);
+  border-radius: 8px;
+  color: var(--text2-topbar);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: 0.2s;
+  white-space: nowrap;
+}
+.hub-back-btn:hover, .hub-newtab-btn:hover {
+  border-color: var(--amber-topbar);
+  color: var(--gold-topbar);
+  background: var(--bg-topbar);
+}
+.hub-back-btn .material-symbols-outlined,
+.hub-newtab-btn .material-symbols-outlined {
+  font-size: 16px;
+}
+.hub-active-tool {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--gold-topbar);
+  white-space: nowrap;
+  background: transparent;
+}
+.hub-clock {
+  font-size: 11px;
+  color: var(--text3-topbar);
+  font-variant-numeric: tabular-nums;
+  background: var(--bg-topbar);
+  padding: 4px 10px;
+  border-radius: 30px;
+  border: 1px solid var(--border-topbar);
+}
+.hub-theme-btn {
+  background: var(--bg-topbar);
+  border: 1px solid var(--border-topbar);
+  border-radius: 30px;
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 16px;
+  transition: border-color 0.2s;
+  flex-shrink: 0;
+}
+.hub-theme-btn:hover {
+  border-color: var(--gold-topbar);
+}
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 20px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+@media (max-width: 600px) {
+  .hub-back-btn span:not(.material-symbols-outlined),
+  .hub-newtab-btn span:not(.material-symbols-outlined) {
+    display: none;
+  }
+  .hub-back-btn, .hub-newtab-btn {
+    padding: 5px 8px;
+  }
+  .hub-active-tool {
+    font-size: 13px;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hub-clock {
+    font-size: 10px;
+    padding: 4px 6px;
+  }
+}
+@media (max-width: 480px) {
+  .hub-topbar-title {
+    display: none;
+  }
+  .hub-topbar-center {
+    position: static;
+    transform: none;
+    margin: 0 auto;
+  }
+}
+/* ==================== FIM TOPBAR ==================== */
+
+/* Estilos originais (sem header antigo) */
 .classe-input, .alvo-pct, .rec-nums, .rec-valor, .resumo-val, 
 .patrim-tag, .header-date, .total-bar span:last-child, .debug-box {
   font-family: 'Atkinson Hyperlegible', 'DM Mono', monospace;
   font-weight: 600;
   letter-spacing: 0.5px;
 }
+.rec-valor, .resumo-val { font-size: 1.1em; }
 
-.rec-valor, .resumo-val {
-  font-size: 1.1em;
-}
-
-.header { background: var(--header-bg); border-bottom: 1px solid var(--header-border); padding: 0 2rem; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-.header-logo { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; }
-.dot { width: 28px; height: 28px; background: var(--gold); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; color: #000; }
-.header-right { display: flex; align-items: center; gap: 1rem; }
-.header-date { font-size: 13px; color: var(--text3); }
-.theme-toggle { background: var(--bg3); border: 1px solid var(--border2); border-radius: 30px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; }
-.theme-toggle:hover { border-color: var(--gold); transform: scale(1.05); }
 .main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
 .card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem; }
 .card-title { font-size: 12px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
@@ -149,26 +307,35 @@ body {
 .footer { text-align: center; font-size: 12px; color: var(--text3); padding: 2rem; border-top: 1px solid var(--footer-border); margin-top: 1rem; }
 .arrow { transition: transform 0.2s ease; display: inline-block; }
 .arrow.rotated { transform: rotate(90deg); }
-.classe-input:focus, .btn:focus, .perfil-btn:focus {
-  outline: 2px solid var(--gold);
-  outline-offset: 2px;
-}
 </style>
 </head>
 <body>
 
-<div class="overlay" id="overlay"><div class="spin"></div><div class="spin-text">Processando PDF...</div></div>
+<!-- ==================== TOPBAR PADRÃO HUB FINANCEIRO ==================== -->
+<div class="hub-topbar">
+  <div class="hub-topbar-left">
+    <div class="hub-pbf-badge">PBF</div>
+    <span class="hub-topbar-title">Hub Financeiro</span>
+    <button class="hub-back-btn" id="hubBackBtn">
+      <span class="material-symbols-outlined">arrow_back</span>
+      <span>Voltar ao início</span>
+    </button>
+  </div>
+  <div class="hub-topbar-center">
+    <span id="hubActiveToolName" class="hub-active-tool">Rebalanceador</span>
+  </div>
+  <div class="hub-topbar-right">
+    <button class="hub-newtab-btn" id="hubNewTabBtn">
+      <span class="material-symbols-outlined">open_in_new</span>
+      <span>Nova aba</span>
+    </button>
+    <span class="hub-clock" id="hubClock"></span>
+    <button class="hub-theme-btn" id="hubThemeBtn">🌙</button>
+  </div>
+</div>
+<!-- ==================== FIM TOPBAR ==================== -->
 
-<header class="header">
-  <div class="header-logo">
-    <div class="dot">PBF</div>
-    Rebalanceador de Carteira · 11 Classes
-  </div>
-  <div class="header-right">
-    <div class="header-date" id="hDate"></div>
-    <button class="theme-toggle" id="themeToggle" title="Alternar modo claro/escuro">🌙</button>
-  </div>
-</header>
+<div class="overlay" id="overlay"><div class="spin"></div><div class="spin-text">Processando PDF...</div></div>
 
 <main class="main">
   <div class="card">
@@ -439,7 +606,6 @@ function renderAlvo() {
   document.getElementById('perfilLabel').textContent = perfilAtivo;
   const container = document.getElementById('tabelaAlvo');
   
-  // Classes que aparecem na recomendação (exclui Caixa, Proventos e Fundos Listados)
   const classesAlvo = CLASSES.filter(c => c !== 'Caixa' && c !== 'Proventos' && c !== 'Fundos Listados');
   
   container.innerHTML = classesAlvo.map((c, i) => `
@@ -478,7 +644,6 @@ function analisar() {
     total += atual[c];
   });
   
-  // TOLERÂNCIA DE 1% (aceita de 99% a 101%)
   if (Math.abs(total - 100) > 1) {
     setStatus(`Total deve ser próximo de 100% (atual: ${fmtPct(total)}). Tolerância de 1%`, 'err');
     return;
@@ -487,7 +652,6 @@ function analisar() {
   const alvo = PERFIS[perfilAtivo];
   let nManter = 0, nAlocar = 0, nRetirar = 0;
   
-  // Classes que serão analisadas (exclui Caixa, Proventos e Fundos Listados da recomendação)
   const classesAnalise = CLASSES.filter(c => c !== 'Caixa' && c !== 'Proventos' && c !== 'Fundos Listados');
   
   const html = classesAnalise.map((c, idx) => {
@@ -550,6 +714,55 @@ function analisar() {
   area.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+// ==================== Funções da topbar ====================
+document.getElementById('hubBackBtn')?.addEventListener('click', () => {
+  if (window.self !== window.top) {
+    window.parent.postMessage({ action: 'hubNavigate', target: 'home' }, '*');
+  } else {
+    window.location.href = "https://pabloads2020-lang.github.io/Dashboard-Ferramentas-Integradas/";
+  }
+});
+document.getElementById('hubNewTabBtn')?.addEventListener('click', () => {
+  window.open(window.location.href, '_blank');
+});
+
+function updateClock() {
+  const clockEl = document.getElementById('hubClock');
+  if (!clockEl) return;
+  const now = new Date();
+  const formatted = now.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' }) + ' · ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  clockEl.textContent = formatted;
+}
+updateClock();
+setInterval(updateClock, 1000);
+
+// ==================== Sincronização do tema (integrado com o hub-theme-btn) ====================
+function initTheme() {
+  const savedTheme = localStorage.getItem('theme');
+  const btnTheme = document.getElementById('hubThemeBtn');
+  if (savedTheme === 'light') {
+    document.body.classList.add('light');
+    if (btnTheme) btnTheme.textContent = '☀️';
+  } else {
+    document.body.classList.remove('light');
+    if (btnTheme) btnTheme.textContent = '🌙';
+  }
+  if (btnTheme) {
+    btnTheme.addEventListener('click', () => {
+      if (document.body.classList.contains('light')) {
+        document.body.classList.remove('light');
+        localStorage.setItem('theme', 'dark');
+        btnTheme.textContent = '🌙';
+      } else {
+        document.body.classList.add('light');
+        localStorage.setItem('theme', 'light');
+        btnTheme.textContent = '☀️';
+      }
+    });
+  }
+}
+
+// Eventos originais do rebalanceador
 document.getElementById('btnToggleDebug').addEventListener('click', () => {
   const debugBox = document.getElementById('debugBox');
   const arrow = document.getElementById('debugArrow');
@@ -620,29 +833,12 @@ document.getElementById('btnLimpar').addEventListener('click', () => {
 });
 
 document.getElementById('btnAnalisar').addEventListener('click', analisar);
-document.getElementById('themeToggle').addEventListener('click', () => {
-  const body = document.body;
-  const btn = document.getElementById('themeToggle');
-  if (body.classList.contains('light')) {
-    body.classList.remove('light');
-    localStorage.setItem('theme', 'dark');
-    btn.textContent = '🌙';
-  } else {
-    body.classList.add('light');
-    localStorage.setItem('theme', 'light');
-    btn.textContent = '☀️';
-  }
-});
 
-(function init() {
-  const saved = localStorage.getItem('theme');
-  if (saved === 'light') {
-    document.body.classList.add('light');
-    document.getElementById('themeToggle').textContent = '☀️';
-  }
-  document.getElementById('hDate').textContent = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-  renderInputs(); renderPerfis(); renderAlvo();
-})();
+// Inicialização da página
+initTheme();
+renderInputs();
+renderPerfis();
+renderAlvo();
 </script>
 </body>
 </html>
