@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Atkinson+Hyperlegible:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0,1" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 :root {
   --bg: #0e1117; --bg2: #161b25; --bg3: #1c2333;
@@ -307,6 +308,9 @@ body.light .hub-topbar {
 .footer { text-align: center; font-size: 12px; color: var(--text3); padding: 2rem; border-top: 1px solid var(--footer-border); margin-top: 1rem; }
 .arrow { transition: transform 0.2s ease; display: inline-block; }
 .arrow.rotated { transform: rotate(90deg); }
+.btn-salvar-img { display: inline-flex; align-items: center; gap: 7px; background: transparent; border: 1px solid var(--border2); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 500; color: var(--text2); cursor: pointer; transition: all .15s; }
+.btn-salvar-img:hover { border-color: var(--gold); color: var(--gold); background: rgba(245,200,66,0.07); }
+.btn-salvar-img svg { flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -379,7 +383,23 @@ body.light .hub-topbar {
   </div>
 
   <div id="resultArea" class="card fade-in" style="display:none">
-    <div class="card-title">Recomendações de rebalanceamento</div>
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:0.25rem;">
+      <div class="card-title" style="margin-bottom:0">Recomendações de rebalanceamento</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-salvar-img" id="btnCopiarImg" onclick="copiarImagem()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+          </svg>
+          Copiar imagem
+        </button>
+        <button class="btn-salvar-img" id="btnSalvarImg" onclick="salvarImagem()">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Salvar imagem
+        </button>
+      </div>
+    </div>
     <div id="listaRec"></div>
     <div class="resumo-grid" id="resumoGrid"></div>
     <div class="legenda">
@@ -634,6 +654,99 @@ function renderPerfis() {
       document.getElementById('resultArea').style.display = 'none';
     });
   });
+}
+
+// ── Função compartilhada: gera o canvas final com fundo + borda arredondada + watermark ──
+async function _gerarCanvasFinal(ocultarBtns) {
+  const area = document.getElementById('resultArea');
+  const isLight = document.body.classList.contains('light');
+
+  ocultarBtns.forEach(id => { const el = document.getElementById(id); if (el) el.style.visibility = 'hidden'; });
+
+  try {
+    const canvas = await html2canvas(area, {
+      backgroundColor: isLight ? '#ffffff' : '#161b25',
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      onclone: (doc) => {
+        doc.getElementById('resultArea').style.padding = '24px';
+      }
+    });
+
+    const final = document.createElement('canvas');
+    const radius = 16, pad = 32;
+    final.width  = canvas.width  + pad * 2;
+    final.height = canvas.height + pad * 2;
+    const fc = final.getContext('2d');
+
+    fc.fillStyle = isLight ? '#f5f7fa' : '#0e1117';
+    fc.fillRect(0, 0, final.width, final.height);
+
+    fc.save();
+    fc.beginPath();
+    fc.roundRect(pad, pad, canvas.width, canvas.height, radius);
+    fc.clip();
+    fc.drawImage(canvas, pad, pad);
+    fc.restore();
+
+    fc.font = '500 13px DM Sans, sans-serif';
+    fc.fillStyle = isLight ? 'rgba(0,0,0,0.22)' : 'rgba(255,255,255,0.18)';
+    fc.textAlign = 'right';
+    fc.fillText('Hub Financeiro · PBF', final.width - pad, final.height - 10);
+
+    return final;
+  } finally {
+    ocultarBtns.forEach(id => { const el = document.getElementById(id); if (el) el.style.visibility = 'visible'; });
+  }
+}
+
+async function copiarImagem() {
+  const btn = document.getElementById('btnCopiarImg');
+  const original = btn.innerHTML;
+  btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Copiando…';
+  btn.disabled = true;
+
+  try {
+    const final = await _gerarCanvasFinal(['btnCopiarImg', 'btnSalvarImg']);
+    const blob = await new Promise(res => final.toBlob(res, 'image/png'));
+    await navigator.clipboard.write([
+      new ClipboardItem({ 'image/png': blob })
+    ]);
+    btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Copiado!';
+    btn.style.borderColor = 'var(--green)';
+    btn.style.color = 'var(--green)';
+    setTimeout(() => {
+      btn.innerHTML = original;
+      btn.style.borderColor = '';
+      btn.style.color = '';
+    }, 2500);
+  } catch(e) {
+    console.error('Erro ao copiar:', e);
+    btn.innerHTML = original;
+    alert('Não foi possível copiar. Use "Salvar imagem" como alternativa.');
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function salvarImagem() {
+  const btn = document.getElementById('btnSalvarImg');
+  btn.style.visibility = 'hidden';
+  try {
+    const final = await _gerarCanvasFinal(['btnCopiarImg', 'btnSalvarImg']);
+    const link = document.createElement('a');
+    const data = new Date();
+    const stamp = `${data.getFullYear()}${String(data.getMonth()+1).padStart(2,'0')}${String(data.getDate()).padStart(2,'0')}`;
+    link.download = `rebalanceamento_${perfilAtivo}_${stamp}.png`;
+    link.href = final.toDataURL('image/png');
+    link.click();
+  } catch(e) {
+    console.error('Erro ao gerar imagem:', e);
+    alert('Erro ao gerar imagem. Tente novamente.');
+  } finally {
+    btn.style.visibility = 'visible';
+  }
 }
 
 function analisar() {
