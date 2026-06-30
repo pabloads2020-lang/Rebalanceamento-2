@@ -267,7 +267,13 @@ body.light .hub-topbar {
 .perfil-btn { flex: 1; min-width: 100px; padding: 10px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 600; cursor: pointer; text-align: center; border: 1px solid var(--border2); background: var(--bg3); color: var(--text2); display: inline-flex; align-items: center; justify-content: center; gap: 7px; transition: all .15s var(--ease); }
 .perfil-btn svg { opacity: .8; flex-shrink: 0; }
 .perfil-btn:hover { border-color: var(--gold); color: var(--gold); }
-.perfil-btn.ativo { background: rgba(240,187,62,.13); border-color: rgba(240,187,62,.55); color: var(--gold); }
+/* Cores específicas por perfil */
+.perfil-btn[data-perfil="Conservador"]:hover { border-color: var(--blue); color: var(--blue); }
+.perfil-btn[data-perfil="Conservador"].ativo { background: rgba(77,155,245,.13); border-color: rgba(77,155,245,.55); color: var(--blue); }
+.perfil-btn[data-perfil="Moderado"]:hover { border-color: var(--gold); color: var(--gold); }
+.perfil-btn[data-perfil="Moderado"].ativo { background: rgba(240,187,62,.13); border-color: rgba(240,187,62,.55); color: var(--gold); }
+.perfil-btn[data-perfil="Agressivo"]:hover { border-color: var(--red); color: var(--red); }
+.perfil-btn[data-perfil="Agressivo"].ativo { background: rgba(240,89,78,.13); border-color: rgba(240,89,78,.55); color: var(--red); }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
 @media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
 .classe-row { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: var(--radius-md); margin-bottom: 4px; transition: background .15s, border-color .15s; background: transparent; }
@@ -338,6 +344,59 @@ body.light .hub-topbar {
 .btn-salvar-img { display: inline-flex; align-items: center; gap: 7px; background: transparent; border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 8px 15px; font-size: 12.5px; font-weight: 600; color: var(--text2); cursor: pointer; transition: all .15s; font-family: 'DM Sans', sans-serif; }
 .btn-salvar-img:hover { border-color: var(--gold); color: var(--gold); background: rgba(240,187,62,0.08); }
 .btn-salvar-img svg { flex-shrink: 0; }
+
+/* ==================== ESTILOS DO EDITOR DE CARTEIRAS ==================== */
+#edSenhaOverlay{position:fixed;inset:0;background:rgba(6,7,12,.78);z-index:1100;backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center}
+#edSenhaOverlay.aberto{display:flex}
+.ed-senha-card{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius-xl);padding:2.1rem;width:min(340px,90vw);box-shadow:var(--shadow-modal)}
+.ed-senha-icon{font-size:28px;text-align:center;margin-bottom:.8rem}
+.ed-senha-title{font-size:16.5px;font-weight:700;text-align:center;margin-bottom:.35rem}
+.ed-senha-sub{font-size:13px;color:var(--text3);text-align:center;margin-bottom:1.5rem;line-height:1.55}
+.ed-senha-wrap{position:relative;margin-bottom:10px}
+.ed-senha-input{width:100%;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);padding:11px 42px 11px 14px;font-size:14px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s,box-shadow .15s;box-sizing:border-box}
+.ed-senha-input:focus{border-color:var(--gold);box-shadow:var(--shadow-focus)}
+.ed-senha-input.shake{animation:edShake .35s ease;border-color:var(--red)!important}
+@keyframes edShake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.ed-eye{position:absolute;right:11px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;color:var(--text3);padding:0;line-height:1}
+.ed-eye:hover{color:var(--gold)}
+.ed-senha-err{font-size:12px;color:var(--red);text-align:center;margin-bottom:8px;display:none}
+.ed-senha-btns{display:flex;gap:8px;margin-top:6px}
+.ed-btn-cancel{flex:1;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);border-radius:var(--radius-sm);padding:11px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.ed-btn-cancel:hover{border-color:var(--gold);color:var(--gold)}
+.ed-btn-enter{flex:1;background:var(--gold);color:#16110a;border:none;border-radius:var(--radius-sm);padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+.ed-btn-enter:hover{background:var(--gold2)}
+#edOverlay{position:fixed;inset:0;background:rgba(6,7,12,.55);z-index:999;backdrop-filter:blur(3px);display:none}
+#edPanel{position:fixed;top:0;right:-600px;width:min(560px,100vw);height:100vh;background:var(--bg2);border-left:1px solid var(--border2);z-index:1000;display:flex;flex-direction:column;box-shadow:-12px 0 50px rgba(0,0,0,.45);transition:right .3s cubic-bezier(.4,0,.2,1),background .2s;overflow:hidden}
+#edPanel.aberto{right:0}
+.ed-panel-header{padding:1.1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2);flex-shrink:0;transition:background .2s}
+.ed-panel-title{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;color:var(--text)}
+.ed-panel-actions{display:flex;gap:8px;align-items:center}
+.ed-export-btn{background:var(--gold);color:#16110a;border:none;border-radius:var(--radius-sm);padding:9px 15px;font-weight:700;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.ed-export-btn:hover{background:var(--gold2)}
+.ed-close-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--text);border-radius:var(--radius-sm);width:36px;height:36px;font-size:20px;cursor:pointer;line-height:1;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.ed-close-btn:hover{border-color:var(--red);color:var(--red)}
+.ed-body{flex:1;overflow-y:auto;padding:1.3rem 1.5rem}
+.ed-info{font-size:12px;color:var(--text3);margin-bottom:1.2rem;background:var(--bg3);border-radius:var(--radius-sm);padding:11px 13px;border-left:3px solid var(--gold);line-height:1.6}
+.ed-info strong{color:var(--gold)}
+.ed-perfil-row{display:flex;gap:8px;margin-bottom:1.3rem;flex-wrap:wrap}
+.ed-perfil-btn{padding:9px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);transition:all .15s;font-family:'DM Sans',sans-serif;display:inline-flex;align-items:center;gap:7px}
+.ed-perfil-btn svg{opacity:.8;flex-shrink:0}
+.ed-perfil-btn:hover{border-color:var(--gold);color:var(--gold)}
+.ed-perfil-btn.ativo{background:rgba(240,187,62,.13);border-color:rgba(240,187,62,.55);color:var(--gold)}
+.ed-sec{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:.7rem;display:flex;align-items:center;justify-content:space-between}
+.ed-classes-grid{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-md);padding:1rem 1.1rem;margin-bottom:1.3rem}
+.ed-class-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)}
+.ed-class-row:last-of-type{border-bottom:none}
+.ed-class-label{flex:1;font-size:13px;color:var(--text2)}
+.ed-class-input{width:65px;background:var(--input-bg);border:1px solid var(--input-border);border-radius:var(--radius-sm);padding:6px 8px;font-size:14px;font-weight:700;color:var(--gold);text-align:right;outline:none;font-family:'DM Sans',sans-serif;font-variant-numeric:tabular-nums;transition:border-color .15s}
+.ed-class-input:focus{border-color:var(--gold)}
+.ed-pct-lbl{font-size:12px;color:var(--text3);width:14px;flex-shrink:0}
+.ed-total-row{display:flex;align-items:center;justify-content:space-between;padding-top:.8rem;margin-top:.5rem;border-top:1px solid var(--border2);font-size:13px;color:var(--text3)}
+.ed-total-val{font-size:14px;font-weight:700;font-family:'DM Sans',sans-serif;font-variant-numeric:tabular-nums}
+.ed-total-val.ok{color:var(--green)}.ed-total-val.over{color:var(--red)}.ed-total-val.under{color:var(--amber)}
+#edFloatBtn{position:fixed;bottom:20px;right:18px;width:36px;height:36px;background:var(--gold);color:#16110a;border:none;border-radius:50%;font-size:18px;cursor:pointer;z-index:900;box-shadow:0 4px 18px rgba(240,187,62,.4);transition:all .15s;display:flex;align-items:center;justify-content:center}
+#edFloatBtn:hover{transform:scale(1.08);box-shadow:0 6px 26px rgba(240,187,62,.55)}
+@media print{#edFloatBtn,#edSenhaOverlay,#edPanel,#edOverlay{display:none!important}}
 </style>
 </head>
 <body>
@@ -439,6 +498,36 @@ body.light .hub-topbar {
 </main>
 
 <footer class="footer">Material informativo — não constitui recomendação de investimento.</footer>
+
+<!-- PAINEL DE EDIÇÃO -->
+<div id="edOverlay" onclick="fecharEditor()"></div>
+<div id="edPanel">
+  <div class="ed-panel-header">
+    <div class="ed-panel-title"><svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5H7a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>Editar carteiras recomendadas</div>
+    <div class="ed-panel-actions">
+      <button class="ed-export-btn" onclick="edSalvar()">Salvar</button>
+      <button class="ed-close-btn" onclick="fecharEditor()">x</button>
+    </div>
+  </div>
+  <div class="ed-body">
+    <div class="ed-info">Edite os percentuais de cada classe. <strong>O total deve somar 100%.</strong></div>
+    <div class="ed-perfil-row" id="edPerfilRow"></div>
+    <div class="ed-sec">Alocação por classe</div>
+    <div class="ed-classes-grid" id="edClassesGrid"></div>
+    <div class="ed-total-row"><span>Total</span><span class="ed-total-val" id="edTotalVal">0%</span></div>
+  </div>
+</div>
+<button id="edFloatBtn" onclick="abrirEditor()" title="Editar carteiras"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 5H7a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
+<div id="edSenhaOverlay">
+  <div class="ed-senha-card">
+    <div class="ed-senha-icon">🔒</div>
+    <div class="ed-senha-title">Área restrita</div>
+    <div class="ed-senha-sub">Digite a senha para editar as carteiras recomendadas.</div>
+    <div class="ed-senha-wrap"><input class="ed-senha-input" type="password" id="edSenhaInput" placeholder="Senha" onkeydown="if(event.key==='Enter')edConfirmarSenha()"><button class="ed-eye" id="edEyeBtn">👁</button></div>
+    <div class="ed-senha-err" id="edSenhaErr">Senha incorreta. Tente novamente.</div>
+    <div class="ed-senha-btns"><button class="ed-btn-cancel" onclick="fecharSenha()">Cancelar</button><button class="ed-btn-enter" onclick="edConfirmarSenha()">Entrar</button></div>
+  </div>
+</div>
 
 <script>
 pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -675,7 +764,7 @@ function renderPerfis() {
   const container = document.getElementById('perfisRow');
   container.innerHTML = Object.keys(PERFIS).map(p => `
     <button class="perfil-btn ${p === perfilAtivo ? 'ativo' : ''}" data-perfil="${p}">
-      ${icons[p]}${p}
+      ${p}
     </button>
   `).join('');
   container.querySelectorAll('.perfil-btn').forEach(btn => {
@@ -982,6 +1071,120 @@ document.getElementById('btnLimpar').addEventListener('click', () => {
 });
 
 document.getElementById('btnAnalisar').addEventListener('click', analisar);
+
+
+// ==================== EDITOR DE CARTEIRAS ====================
+const ED_SENHA = 'pbf2024';
+let edPerfilAtivo = 'Moderado';
+let edAutorizado = false;
+
+function abrirEditor() {
+  if (!edAutorizado) {
+    document.getElementById('edSenhaOverlay').classList.add('aberto');
+    document.getElementById('edSenhaInput').value = '';
+    document.getElementById('edSenhaErr').style.display = 'none';
+    setTimeout(() => document.getElementById('edSenhaInput').focus(), 100);
+    return;
+  }
+  abrirPainelEditor();
+}
+
+function fecharSenha() {
+  document.getElementById('edSenhaOverlay').classList.remove('aberto');
+}
+
+function edToggleSenha() {
+  const inp = document.getElementById('edSenhaInput');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function edConfirmarSenha() {
+  const val = document.getElementById('edSenhaInput').value;
+  if (val === ED_SENHA) {
+    edAutorizado = true;
+    fecharSenha();
+    abrirPainelEditor();
+  } else {
+    const inp = document.getElementById('edSenhaInput');
+    const err = document.getElementById('edSenhaErr');
+    inp.classList.add('shake');
+    err.style.display = 'block';
+    setTimeout(() => inp.classList.remove('shake'), 400);
+  }
+}
+
+document.getElementById('edEyeBtn').addEventListener('click', edToggleSenha);
+
+function abrirPainelEditor() {
+  edPerfilAtivo = perfilAtivo;
+  edRenderPerfis();
+  edRenderClasses();
+  document.getElementById('edOverlay').style.display = 'block';
+  document.getElementById('edPanel').classList.add('aberto');
+}
+
+function fecharEditor() {
+  document.getElementById('edOverlay').style.display = 'none';
+  document.getElementById('edPanel').classList.remove('aberto');
+}
+
+function edRenderPerfis() {
+  const row = document.getElementById('edPerfilRow');
+  row.innerHTML = Object.keys(PERFIS).map(p => `
+    <button class="ed-perfil-btn ${p === edPerfilAtivo ? 'ativo' : ''}" onclick="edMudarPerfil('${p}')">${p}</button>
+  `).join('');
+}
+
+function edMudarPerfil(p) {
+  edPerfilAtivo = p;
+  edRenderPerfis();
+  edRenderClasses();
+}
+
+function edRenderClasses() {
+  const perfil = PERFIS[edPerfilAtivo];
+  const classesEd = CLASSES.filter(c => c !== 'Caixa' && c !== 'Proventos' && c !== 'Fundos Listados');
+  const grid = document.getElementById('edClassesGrid');
+  grid.innerHTML = classesEd.map(c => `
+    <div class="ed-class-row">
+      <span class="ed-class-label">${c}</span>
+      <input class="ed-class-input" type="number" step="0.5" min="0" max="100" 
+        value="${perfil[c] ?? 0}" 
+        data-classe="${c}" 
+        oninput="edAtualizarTotal()">
+      <span class="ed-pct-lbl">%</span>
+    </div>
+  `).join('');
+  edAtualizarTotal();
+}
+
+function edAtualizarTotal() {
+  const inputs = document.querySelectorAll('.ed-class-input');
+  let total = 0;
+  inputs.forEach(inp => { total += parseFloat(inp.value || 0) || 0; });
+  const el = document.getElementById('edTotalVal');
+  el.textContent = total.toFixed(1) + '%';
+  el.className = 'ed-total-val ' + (Math.abs(total - 100) < 0.1 ? 'ok' : total > 100 ? 'over' : 'under');
+}
+
+function edSalvar() {
+  const inputs = document.querySelectorAll('.ed-class-input');
+  let total = 0;
+  inputs.forEach(inp => { total += parseFloat(inp.value || 0) || 0; });
+  if (Math.abs(total - 100) > 0.5) {
+    alert('O total deve ser 100%. Atual: ' + total.toFixed(1) + '%');
+    return;
+  }
+  inputs.forEach(inp => {
+    PERFIS[edPerfilAtivo][inp.dataset.classe] = parseFloat(inp.value || 0) || 0;
+  });
+  // Recarregar views
+  renderPerfis();
+  renderAlvo();
+  document.getElementById('resultArea').style.display = 'none';
+  fecharEditor();
+}
+// ==================== FIM EDITOR ====================
 
 // Inicialização da página
 initTheme();
